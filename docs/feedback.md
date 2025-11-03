@@ -163,18 +163,29 @@ When providing feedback, please:
 
 Want to know what we're working on?
 
-**Current priorities:**
-1. Stability and bug fixes
-2. Performance optimization
-3. Enhanced statistics
-4. Firefox extension port
+**✅ Completed (Phase 0-4):**
+- ✅ Core reporting system (watch pages + Shorts)
+- ✅ Visual warning icons with blur effects
+- ✅ Trust-based community consensus (prevents brigading)
+- ✅ CDN caching with 48h sliding window
+- ✅ Offline reporting with automatic sync
+- ✅ Delta sync for real-time updates
+- ✅ 95%+ API call reduction
 
-**Planned features (not prioritized):**
-- Channel-level marking
-- User reputation system
-- Advanced filtering options
-- API for third-party tools
+**⏸️ Future priorities (Phase 5+):**
+1. Enhanced Shorts integration (blur/pause/dismiss system)
+2. Auto-hide improvements
+3. Enhanced statistics and insights
+4. Testing suite (Jest + Playwright)
+5. Performance profiling
+
+**🚀 Long-term goals (not prioritized):**
+- Migrate to Cloudflare R2 + Workers for unlimited scale
+- Firefox extension port
+- Channel-level statistics and trends
+- Community moderation tools
 - Mobile browser investigation
+- API for third-party tools
 
 **Your vote matters!** Comment on feature requests to help us prioritize.
 
@@ -220,4 +231,4 @@ A: Absolutely! Regular contributors may be invited to join the maintainer team. 
 
 ---
 
-*Last updated: January 31, 2025*
+*Last updated: November 3, 2025*

@@ -1,7 +1,7 @@
 # SlopBlock Privacy Policy
 
-**Last Updated:** January 31, 2025
-**Version:** 0.1.0
+**Last Updated:** November 3, 2025
+**Version:** 1.0.0 (Phase 4 Complete)
 
 ---
 
@@ -16,7 +16,8 @@ SlopBlock is designed with **privacy-first** principles. We believe in transpare
 - ✅ **No personal information** collected
 - ✅ **No browsing history** tracked
 - ✅ **No YouTube account** data accessed
-- ✅ **Anonymous reporting** system
+- ✅ **Anonymous reporting** system with trust scoring
+- ✅ **Local caching** for privacy (IndexedDB on your device)
 - ✅ **Open source** code for full transparency
 - ✅ **No third-party** sharing
 - ✅ **No advertising** or tracking pixels
@@ -52,9 +53,14 @@ SlopBlock is designed with **privacy-first** principles. We believe in transpare
 
 **Stored:** In our Supabase (PostgreSQL) database
 
-**Purpose:** Track community reports and display warnings when threshold is met
+**Purpose:** Track community reports and display warnings when trust threshold is met
 
 **Sensitive:** No - video IDs are public, extension IDs are random
+
+**Phase 3 Addition - Trust Fields:**
+- `trust_weight`: Your report's weight (0.30-1.00 based on time + accuracy)
+- `accuracy_status`: 'pending', 'accurate', or 'inaccurate' (evaluated after 30 days)
+- `accuracy_evaluated_at`: Timestamp when accuracy was determined
 
 **Example:**
 ```json
@@ -62,11 +68,38 @@ SlopBlock is designed with **privacy-first** principles. We believe in transpare
   "video_id": "dQw4w9WgXcQ",
   "extension_id": "7e8d9f0a-1b2c-3d4e-5f6a-7b8c9d0e1f2a",
   "channel_id": "UCuAXFkgsw1L7xaCfnd5JJOw",
-  "reported_at": "2025-01-31T12:34:56Z"
+  "reported_at": "2025-01-31T12:34:56Z",
+  "trust_weight": 0.65,
+  "accuracy_status": "pending"
 }
 ```
 
-### 3. User Settings
+### 3. Trust Score Data (Phase 3)
+
+**What:** Your extension's trust score and accuracy statistics
+
+**When:** Calculated automatically based on your reports over time
+
+**Stored:** In our Supabase (PostgreSQL) database
+
+**Purpose:** Prevent abuse from fake accounts while allowing legitimate users to contribute
+
+**Sensitive:** No - just numerical scores tied to random extension ID
+
+**Example:**
+```json
+{
+  "extension_id": "7e8d9f0a-1b2c-3d4e-5f6a-7b8c9d0e1f2a",
+  "trust_score": 0.75,
+  "accuracy_rate": 0.82,
+  "accurate_reports": 14,
+  "inaccurate_reports": 3,
+  "pending_reports": 8,
+  "first_seen_at": "2025-01-01T10:00:00Z"
+}
+```
+
+### 4. User Settings
 
 **What:** Your preferences (e.g., auto-hide enabled/disabled)
 
@@ -82,6 +115,30 @@ SlopBlock is designed with **privacy-first** principles. We believe in transpare
 ```json
 {
   "auto_hide_enabled": false
+}
+```
+
+### 5. Local Cache Data (Phase 4)
+
+**What:** Marked video IDs cached locally for instant performance
+
+**When:** Downloaded automatically in background (hourly full blob + 30-min delta syncs)
+
+**Stored:** Locally in your browser (IndexedDB)
+
+**Purpose:** Enable instant video checks without server calls
+
+**Sensitive:** No - just public video IDs and timestamps
+
+**Note:** This data never leaves your device. It's a local performance cache only.
+
+**Example:**
+```json
+{
+  "video_id": "dQw4w9WgXcQ",
+  "effective_trust_points": 3.2,
+  "is_marked": true,
+  "cached_at": "2025-11-03T14:22:00Z"
 }
 ```
 
@@ -104,19 +161,32 @@ We explicitly **do not** collect:
 
 ## How We Use Your Data
 
-### Primary Use: Community Reporting
+### Primary Use: Community Reporting with Trust System
 
 1. You report a video as AI-generated
-2. We store the video ID + your extension ID
-3. We count total reports for that video
-4. If reports ≥ 3, we show warnings to all users
+2. We store the video ID + your extension ID + trust weight
+3. We calculate effective trust points (sum of all weighted reports)
+4. If trust points ≥ 2.5, we show warnings to all users
 5. Your individual reports remain anonymous
+6. After 30 days, your report's accuracy is evaluated to improve your trust score
 
-### Secondary Use: Statistics
+### Secondary Use: Trust & Accuracy
+
+- **Trust Score Calculation**: Based on 50% time (0-30 days) + 50% accuracy (correct reports)
+- **Accuracy Evaluation**: After 30 days, if video reaches threshold → accurate; if not → inaccurate
+- **Abuse Prevention**: New accounts start at 30% trust, building to 100% over 30 days
+
+### Tertiary Use: Statistics
 
 - **Global stats**: Count of marked videos
-- **Personal stats**: Your report count (displayed only to you)
-- **No user profiling**: We don't analyze your reporting patterns
+- **Personal stats**: Your report count and trust score (displayed only to you)
+- **No user profiling**: We don't analyze your reporting patterns or predict behavior
+
+### Local Caching (Phase 4)
+
+- **Background downloads**: Full cache blob hourly + delta syncs every 30 minutes
+- **Local storage**: Marked videos cached in IndexedDB on your device
+- **Privacy benefit**: Video checks happen locally with no server communication
 
 ---
 
@@ -137,11 +207,15 @@ We explicitly **do not** collect:
 
 ### Data Retention
 
-**Reports:** Retained indefinitely for community accuracy
+**Reports:** Retained indefinitely for community accuracy and trust evaluation
+
+**Trust Scores:** Retained indefinitely (tied to anonymous extension ID)
 
 **Extension IDs:** Retained indefinitely (but anonymous)
 
-**Deleted Reports:** If you remove a report, only the report is deleted, not your extension ID
+**Deleted Reports:** If you remove a report, the report is deleted but trust history remains
+
+**Local Cache:** Automatically pruned to 48-hour window (older entries deleted from your device)
 
 ### No Data Selling
 
@@ -153,10 +227,12 @@ We **never** sell, rent, or share your data with third parties. Period.
 
 ### You Can:
 
-1. **View your reports**: Check statistics in the extension popup
-2. **Remove reports**: Click the report button again to undo
-3. **Control visibility**: Toggle auto-hide mode on/off
-4. **Delete all data**: Uninstall the extension (local data cleared automatically)
+1. **View your trust score**: Check your trust level and accuracy in the extension popup
+2. **View your reports**: See your report count and statistics
+3. **Remove reports**: Click the report button again to undo (but can't report same video again)
+4. **Control visibility**: Toggle auto-hide mode on/off
+5. **Clear local cache**: Use "Clear Cache" button in popup to delete cached data
+6. **Delete all data**: Uninstall the extension (local data cleared automatically)
 
 ### Data Deletion
 
