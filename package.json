@@ -1,0 +1,38 @@
+{
+  "name": "slopblock",
+  "version": "0.1.0",
+  "description": "Crowdsourced identification and filtering of AI-generated content on YouTube",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css,html}\""
+  },
+  "keywords": [
+    "chrome-extension",
+    "youtube",
+    "ai-detection",
+    "content-filtering"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.77.0",
+    "idb": "^8.0.3"
+  },
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.2.1",
+    "@types/chrome": "^0.0.260",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.2",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21"
+  },
+  "main": "index.js"
+}

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate Placeholder Icons</title>
+</head>
+<body>
+  <h1>Placeholder Icon Generator</h1>
+  <p>This will generate simple red placeholder icons for development.</p>
+  <button onclick="generateIcons()">Generate Icons</button>
+  <div id="output"></div>
+
+  <script>
+    function generateIcons() {
+      const sizes = [16, 48, 128];
+      const output = document.getElementById('output');
+      output.innerHTML = '';
+
+      sizes.forEach(size => {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+
+        // Draw red background
+        ctx.fillStyle = '#ff6b6b';
+        ctx.fillRect(0, 0, size, size);
+
+        // Draw warning symbol
+        ctx.fillStyle = 'white';
+        ctx.font = `bold ${size * 0.6}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⚠', size / 2, size / 2);
+
+        // Create download link
+        const link = document.createElement('a');
+        link.download = `icon${size}.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.textContent = `Download icon${size}.png`;
+        link.style.display = 'block';
+        link.style.marginTop = '10px';
+
+        output.appendChild(link);
+      });
+
+      output.innerHTML += '<p style="margin-top: 20px;">Click each link to download, then move files to public/icons/ directory.</p>';
+    }
+  </script>
+</body>
+</html>

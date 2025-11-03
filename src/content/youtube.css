@@ -1,0 +1,274 @@
+/**
+ * Styles for SlopBlock extension elements on YouTube
+ */
+
+/* Warning icon overlay on video thumbnails - glossy SVG triangle with pulsing glow */
+.slopblock-warning-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* Center horizontally and vertically */
+  width: 84px; /* Double size - large and prominent */
+  height: 84px;
+  z-index: 1000;
+  pointer-events: auto;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.slopblock-warning-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  /* Static drop shadow for depth */
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.4))
+          drop-shadow(0 0 6px rgba(255, 82, 82, 0.4));
+}
+
+.slopblock-warning-icon:hover {
+  transform: translate(-50%, -50%) scale(1.15); /* Maintain centering while scaling */
+}
+
+/* No special hover effect on SVG - let the animation continue with same subtle glow */
+
+/* Tooltip for showing statistics */
+.slopblock-tooltip {
+  position: absolute;
+  background-color: rgba(28, 28, 28, 0.95);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  z-index: 10000;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  max-width: 300px;
+  white-space: normal;
+}
+
+.slopblock-tooltip::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid rgba(28, 28, 28, 0.95);
+}
+
+/* Player control button styling - matches SponsorBlock sizing */
+.ytp-button.slopblock-player-button {
+  color: #ff6b6b; /* Red/orange warning color */
+  padding: 8px 2px;
+  vertical-align: top;
+  /* Note: width and height are controlled by YouTube's .ytp-button class */
+  /* The button container will be ~48px total (36px SVG + padding) */
+}
+
+.ytp-button.slopblock-player-button svg {
+  width: 36px;
+  height: 36px;
+  pointer-events: none;
+  display: block; /* Prevents inline spacing issues */
+  margin: auto;   /* Centers the SVG if container is larger */
+}
+
+.ytp-button.slopblock-player-button:hover {
+  color: #ff5252; /* Brighter red on hover */
+}
+
+/* State colors for player button */
+.ytp-button.slopblock-player-button.reported {
+  color: #4caf50; /* Green when reported */
+}
+
+.ytp-button.slopblock-player-button.reported:hover {
+  color: #45a049; /* Darker green on hover */
+}
+
+.ytp-button.slopblock-player-button.removed {
+  opacity: 0.5;
+  cursor: not-allowed;
+  color: #888888;
+}
+
+.ytp-button.slopblock-player-button.removed:hover {
+  color: #888888; /* No hover effect when removed */
+}
+
+/* Legacy report button on watch page (metadata area) - kept for backwards compatibility */
+.slopblock-report-button {
+  background-color: #ff6b6b;
+  color: white;
+  border: none;
+  border-radius: 18px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: "Roboto", "Arial", sans-serif;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  min-height: 36px;
+  white-space: nowrap;
+  margin-left: 8px;
+}
+
+.slopblock-report-button:hover:not(:disabled) {
+  background-color: #ff5252;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.slopblock-report-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.slopblock-report-button:disabled {
+  cursor: not-allowed;
+}
+
+/* Wrapper for Shorts button (still needed for Shorts layout) */
+.slopblock-button-wrapper {
+  display: inline-flex !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  flex-basis: auto !important;
+  min-width: fit-content !important;
+  width: auto !important;
+  align-items: center !important;
+  margin-left: 8px !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.slopblock-report-button.reported {
+  background-color: #4caf50;
+}
+
+.slopblock-report-button.reported:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.slopblock-report-button.removed {
+  background-color: #888888;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.slopblock-report-button.removed:hover {
+  background-color: #888888;
+  transform: none;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Shorts-specific button styling */
+.slopblock-shorts-button {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  padding: 4px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  min-height: 48px;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.slopblock-shorts-button div {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.slopblock-shorts-button.reported {
+  background-color: #4caf50;
+}
+
+.slopblock-shorts-button.reported:hover:not(:disabled) {
+  background-color: #45a049;
+}
+
+.slopblock-shorts-button.removed {
+  background-color: #888888;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Hidden video (when auto-hide is enabled) */
+.slopblock-hidden {
+  display: none !important;
+}
+
+/* Toast notification for user feedback */
+.slopblock-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(28, 28, 28, 0.95);
+  color: white;
+  padding: 14px 24px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-family: "Roboto", "Arial", sans-serif;
+  font-weight: 400;
+  z-index: 10001;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  animation: slopblock-toast-in 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  max-width: 90%;
+  text-align: center;
+}
+
+@keyframes slopblock-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+}
+
+/* Blur effect for marked thumbnails - makes AI icon stand out and reduces appeal */
+.slopblock-marked-thumbnail img,
+.slopblock-marked-thumbnail yt-img,
+.slopblock-marked-thumbnail yt-image,
+.slopblock-marked-thumbnail .yt-core-image {
+  filter: blur(5px) saturate(0.4) brightness(0.6);
+  transition: filter 0.3s ease;
+}
+
+/* Remove blur on hover to let users preview if they want */
+.slopblock-marked-thumbnail:hover img,
+.slopblock-marked-thumbnail:hover yt-img,
+.slopblock-marked-thumbnail:hover yt-image,
+.slopblock-marked-thumbnail:hover .yt-core-image {
+  filter: blur(0px) saturate(1) brightness(1);
+}
+
+/* Ensure YouTube's layout doesn't interfere */
+ytd-thumbnail {
+  position: relative;
+}
+
+#thumbnail {
+  position: relative;
+}

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SlopBlock</title>
+  <link rel="stylesheet" href="./popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-logo-container">
+        <img src="/icons/icon1024.png" alt="SlopBlock Logo" class="header-logo">
+        <div class="header-text">
+          <h1>SlopBlock</h1>
+          <p class="subtitle">AI Slop Detection for YouTube</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Section -->
+    <div class="section">
+      <h2>Settings</h2>
+      <div class="setting-item">
+        <label class="toggle-label">
+          <input type="checkbox" id="autoHideToggle" class="toggle-input">
+          <span class="toggle-slider"></span>
+          <span class="toggle-text">Auto-hide marked videos</span>
+        </label>
+        <p class="setting-description">
+          Automatically hide videos marked as AI slop from feeds and search results.
+        </p>
+      </div>
+    </div>
+
+    <!-- Statistics Section -->
+    <div class="section">
+      <h2>Statistics</h2>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="totalVideos">-</div>
+          <div class="stat-label">Videos Marked</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="userReports">-</div>
+          <div class="stat-label">Your Reports</div>
+        </div>
+      </div>
+      <p class="stats-note" id="statsNote">Loading statistics...</p>
+    </div>
+
+    <!-- Trust Score Section (Phase 3) -->
+    <div class="section">
+      <h2>Your Trust Score</h2>
+      <div class="trust-score-container">
+        <div class="trust-score-main">
+          <div class="trust-score-value" id="trustScore">-</div>
+          <div class="trust-score-label">Trust Score</div>
+        </div>
+        <div class="trust-score-breakdown">
+          <div class="trust-metric">
+            <span class="trust-metric-label">Accuracy:</span>
+            <span class="trust-metric-value" id="accuracyRate">-</span>
+          </div>
+          <div class="trust-metric">
+            <span class="trust-metric-label">Evaluated:</span>
+            <span class="trust-metric-value" id="evaluatedReports">-</span>
+          </div>
+          <div class="trust-metric">
+            <span class="trust-metric-label">Pending:</span>
+            <span class="trust-metric-value" id="pendingReports">-</span>
+          </div>
+          <div class="trust-metric pioneer-boost-metric" id="pioneerBoostContainer" style="display: none;">
+            <span class="trust-metric-label">Pioneer Boost:</span>
+            <span class="trust-metric-value pioneer-boost-value" id="pioneerBoost">-</span>
+          </div>
+        </div>
+      </div>
+      <div class="community-health-indicator">
+        <span class="health-label">Community Health:</span>
+        <span class="health-badge" id="healthBadge">
+          <span class="health-dot" id="healthDot"></span>
+          <span class="health-text" id="healthText">-</span>
+        </span>
+      </div>
+      <p class="stats-note" id="trustNote">Trust score is based on account age and report accuracy.</p>
+    </div>
+
+    <!-- Cache Status Section (Phase 4) -->
+    <div class="section" id="cacheSection">
+      <h2>Cache Status</h2>
+      <div class="cache-status-container">
+        <div class="cache-stat">
+          <span class="cache-stat-label">Last Synced:</span>
+          <span class="cache-stat-value" id="lastSynced">Never</span>
+        </div>
+        <div class="cache-stat">
+          <span class="cache-stat-label">Cached Videos:</span>
+          <span class="cache-stat-value" id="cachedVideoCount">0</span>
+        </div>
+      </div>
+      <div class="cache-buttons">
+        <button id="refreshCacheBtn" class="cache-btn cache-btn-primary">Refresh Cache</button>
+        <button id="clearCacheBtn" class="cache-btn cache-btn-secondary">Clear Cache</button>
+      </div>
+      <div class="cache-buttons" style="margin-top: 8px;">
+        <button id="deltaSyncBtn" class="cache-btn cache-btn-secondary">Force Delta Sync</button>
+      </div>
+      <p class="stats-note">Cache automatically updates every 30 minutes.</p>
+    </div>
+
+    <!-- Info Section -->
+    <div class="section">
+      <h2>About</h2>
+      <p class="info-text">
+        SlopBlock helps identify AI-generated content on YouTube through community reporting.
+        When enough trusted reports are received, videos display a warning icon.
+      </p>
+      <p class="info-text" style="font-size: 12px; margin-top: 8px; color: #6c757d;">
+        Your trust score grows over time based on account age and reporting accuracy.
+        Early community members receive a permanent Pioneer Boost as thanks for their contribution.
+      </p>
+      <div class="links">
+        <a href="#" id="helpLink" class="link">Help</a>
+        <span class="link-separator">•</span>
+        <a href="#" id="privacyLink" class="link">Privacy</a>
+        <span class="link-separator">•</span>
+        <a href="#" id="feedbackLink" class="link">Feedback</a>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <p class="version">Version 0.1.0</p>
+    </div>
+  </div>
+
+  <script type="module" src="./popup.ts"></script>
+</body>
+</html>
