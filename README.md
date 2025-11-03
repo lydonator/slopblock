@@ -48,7 +48,7 @@ SlopBlock solves this by:
 
 - **CDN-Based Caching**: 48-hour sliding window with hourly regeneration and 30-minute delta syncs
 - **95%+ API Reduction**: Client-side IndexedDB cache makes video checks instant and local
-- **Trust System**: Hybrid scoring (50% time-based + 50% accuracy-based) prevents botnet attacks
+- **Trust System**: Hybrid scoring (50% time-based + 50% accuracy-based) prevents new account brigade attacks
 - **Offline Support**: Queue manager with automatic retry and batch uploads
 - **SponsorBlock-Inspired**: Batched storage writes, persistent popup connections, config migrations
 - **Privacy-First**: No personal data collection, anonymous reporting
