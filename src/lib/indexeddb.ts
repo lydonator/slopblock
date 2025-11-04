@@ -66,7 +66,8 @@ export async function getDB(): Promise<IDBPDatabase<SlopBlockDB>> {
  */
 export async function syncFullBlob(blobUrl: string): Promise<void> {
   console.log(`[SlopBlock] Fetching blob from: ${blobUrl}`);
-  const db = await getDB();
+
+  // Fetch data BEFORE opening any transactions
   const response = await fetch(blobUrl);
 
   if (!response.ok) {
@@ -78,21 +79,31 @@ export async function syncFullBlob(blobUrl: string): Promise<void> {
   const { metadata, videos } = data;
   console.log(`[SlopBlock] Processing ${videos.length} videos from blob`);
 
-  // Clear existing cache
-  const tx = db.transaction('marked-videos', 'readwrite');
-  await tx.store.clear();
-  await tx.done;
+  // Get DB connection after all async fetching is complete
+  const db = await getDB();
+
+  // Clear existing cache in a single transaction
+  const clearTx = db.transaction('marked-videos', 'readwrite');
+  await clearTx.store.clear();
+  await clearTx.done;
   console.log(`[SlopBlock] Cleared existing cache`);
 
-  // Insert all videos
+  // CRITICAL FIX: Insert all videos WITHOUT awaiting inside the loop
+  // This prevents the transaction from auto-closing due to microtask gaps
   const writeTx = db.transaction('marked-videos', 'readwrite');
-  for (const video of videos) {
-    await writeTx.store.put(video);
-  }
-  await writeTx.done;
-  console.log(`[SlopBlock] Inserted ${videos.length} videos into cache`);
+  const store = writeTx.store;
 
-  // Update metadata
+  // Queue all put operations synchronously (no await in loop)
+  const putPromises: Promise<string>[] = [];
+  for (const video of videos) {
+    putPromises.push(store.put(video));
+  }
+
+  // Now await the transaction completion (all puts are already queued)
+  await writeTx.done;
+  console.log(`[SlopBlock] Transaction committed, inserted ${videos.length} videos`);
+
+  // Update metadata in a separate transaction
   await db.put('cache-metadata', {
     key: 'sync',
     last_sync_timestamp: metadata.generated_at,
@@ -100,20 +111,25 @@ export async function syncFullBlob(blobUrl: string): Promise<void> {
     blob_version: metadata.blob_version,
   });
 
-  // Verify insertion
+  // Verify insertion by reading back from the database
   const finalCount = await db.count('marked-videos');
   console.log(`[SlopBlock] Synced ${videos.length} videos from CDN (verified count: ${finalCount})`);
+
+  if (finalCount !== videos.length) {
+    console.error(`[SlopBlock] CRITICAL: Count mismatch! Expected ${videos.length}, got ${finalCount}`);
+    throw new Error(`IndexedDB sync verification failed: expected ${videos.length} videos, but found ${finalCount}`);
+  }
 }
 
 /**
  * Fetch delta and merge into existing cache
  */
 export async function syncDelta(deltaUrl: string, since: string): Promise<void> {
-  const db = await getDB();
-
   try {
     const fullUrl = `${deltaUrl}?since=${encodeURIComponent(since)}`;
     console.log(`[SlopBlock] Fetching delta from: ${fullUrl}`);
+
+    // Fetch data BEFORE opening database connection
     const response = await fetch(fullUrl);
 
     if (!response.ok) {
@@ -124,14 +140,23 @@ export async function syncDelta(deltaUrl: string, since: string): Promise<void> 
     const data = await response.json();
     const { metadata, videos } = data;
 
-    // Merge videos (upsert)
+    // Get DB connection after all async fetching is complete
+    const db = await getDB();
+
+    // CRITICAL FIX: Merge videos WITHOUT awaiting inside the loop
     const tx = db.transaction('marked-videos', 'readwrite');
+    const store = tx.store;
+
+    // Queue all put operations synchronously (no await in loop)
+    const putPromises: Promise<string>[] = [];
     for (const video of videos) {
-      await tx.store.put(video); // put() will update if exists
+      putPromises.push(store.put(video)); // put() will update if exists
     }
+
+    // Now await the transaction completion (all puts are already queued)
     await tx.done;
 
-    // Update last sync timestamp
+    // Update last sync timestamp in a separate transaction
     const metadataEntry = await db.get('cache-metadata', 'sync');
     if (metadataEntry) {
       await db.put('cache-metadata', {
@@ -140,7 +165,7 @@ export async function syncDelta(deltaUrl: string, since: string): Promise<void> 
       });
     }
 
-    console.log(`[SlopBlock] Delta sync: ${videos.length} updates`);
+    console.log(`[SlopBlock] Delta sync: ${videos.length} updates merged successfully`);
   } catch (error: any) {
     console.error('[SlopBlock] Delta sync error details:', {
       message: error.message,
@@ -159,23 +184,39 @@ export async function pruneOldVideos(windowHours: number): Promise<void> {
   const db = await getDB();
   const cutoffDate = new Date(Date.now() - windowHours * 60 * 60 * 1000).toISOString();
 
-  const tx = db.transaction('marked-videos', 'readwrite');
-  const index = tx.store.index('by-last-updated');
+  // CRITICAL FIX: Collect keys to delete first, then delete in batch
+  // This prevents transaction auto-close issues from await inside cursor loop
+  const keysToDelete: string[] = [];
+
+  // Read-only transaction to find old entries
+  const readTx = db.transaction('marked-videos', 'readonly');
+  const index = readTx.store.index('by-last-updated');
 
   let cursor = await index.openCursor();
-  let deletedCount = 0;
-
   while (cursor) {
     if (cursor.value.last_updated_at < cutoffDate) {
-      await cursor.delete();
-      deletedCount++;
+      keysToDelete.push(cursor.value.video_id);
     }
     cursor = await cursor.continue();
   }
 
-  await tx.done;
+  await readTx.done;
 
-  // Update prune timestamp
+  // Now delete all old entries in a single write transaction
+  if (keysToDelete.length > 0) {
+    const writeTx = db.transaction('marked-videos', 'readwrite');
+    const store = writeTx.store;
+
+    // Queue all delete operations synchronously (no await in loop)
+    const deletePromises: Promise<void>[] = [];
+    for (const key of keysToDelete) {
+      deletePromises.push(store.delete(key));
+    }
+
+    await writeTx.done;
+  }
+
+  // Update prune timestamp in a separate transaction
   const metadataEntry = await db.get('cache-metadata', 'sync');
   if (metadataEntry) {
     await db.put('cache-metadata', {
@@ -184,7 +225,7 @@ export async function pruneOldVideos(windowHours: number): Promise<void> {
     });
   }
 
-  console.log(`[SlopBlock] Pruned ${deletedCount} old videos`);
+  console.log(`[SlopBlock] Pruned ${keysToDelete.length} old videos`);
 }
 
 /**

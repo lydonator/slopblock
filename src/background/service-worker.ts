@@ -9,6 +9,7 @@ import * as api from './api';
 import { MessageType, type ExtensionMessage, type MessageResponse } from '../types';
 import { initializeCache, refreshCache, performDeltaSync } from './cache-manager';
 import { USE_CDN_CACHE } from '../lib/constants';
+import { getDB } from '../lib/indexeddb';
 
 /**
  * Initialize the extension on installation/startup
@@ -140,6 +141,37 @@ async function handleMessage(message: ExtensionMessage): Promise<any> {
       return await api.batchReportVideos(message.payload.reports);
 
     case MessageType.CHECK_VIDEOS_WEIGHTED:
+      // Phase 4: Check IndexedDB cache first, fall back to API
+      if (USE_CDN_CACHE) {
+        try {
+          const db = await getDB();
+          const videoIds = message.payload.video_ids;
+          const markedVideos: Array<{
+            video_id: string;
+            effective_trust_points: number;
+            raw_report_count: number;
+          }> = [];
+
+          // Query each video from cache
+          for (const videoId of videoIds) {
+            const video = await db.get('marked-videos', videoId);
+            if (video && video.is_marked) {
+              markedVideos.push({
+                video_id: video.video_id,
+                effective_trust_points: video.effective_trust_points,
+                raw_report_count: video.raw_report_count,
+              });
+            }
+          }
+
+          console.log(`[SlopBlock Service Worker] Checked ${videoIds.length} videos from cache, found ${markedVideos.length} marked`);
+          return markedVideos;
+        } catch (error) {
+          console.warn('[SlopBlock Service Worker] Cache query failed, falling back to API:', error);
+          // Fall through to API
+        }
+      }
+      // Fallback to API if cache disabled or failed
       return await api.getMarkedVideosWeighted(message.payload.video_ids);
 
     case MessageType.CHECK_USER_REPORT_WEIGHTED:

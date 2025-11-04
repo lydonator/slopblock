@@ -4,10 +4,9 @@
  */
 
 import { MessageType, type ExtensionMessage, type MessageResponse } from '../types';
-import { CSS_CLASSES, USE_CDN_CACHE } from '../lib/constants';
+import { CSS_CLASSES } from '../lib/constants';
 import { getUserReportState, setUserReportState, ReportState, getAutoHideEnabled, getExtensionId } from '../lib/storage';
 import { getQueueManager } from '../lib/queue-manager';
-import { getDB } from '../lib/indexeddb';
 import './youtube.css'; // Import CSS to ensure it's bundled
 
 // Initialize queue manager
@@ -591,38 +590,10 @@ async function checkVideosWithFallback(videoIds: string[]): Promise<Array<{
   effective_trust_points: number;
   raw_report_count: number;
 }>> {
-  // If CDN cache is enabled, try IndexedDB first
-  if (USE_CDN_CACHE) {
-    try {
-      const db = await getDB();
-      const markedVideos: Array<{
-        video_id: string;
-        effective_trust_points: number;
-        raw_report_count: number;
-      }> = [];
+  // IMPORTANT: Content scripts cannot access service worker IndexedDB directly
+  // We must use message passing to ask the service worker to check the cache
 
-      // Query each video from IndexedDB
-      // Cache only contains marked videos (filtered server-side), so presence = marked
-      for (const videoId of videoIds) {
-        const video = await db.get('marked-videos', videoId);
-        if (video) {
-          markedVideos.push({
-            video_id: video.video_id,
-            effective_trust_points: video.effective_trust_points,
-            raw_report_count: video.raw_report_count,
-          });
-        }
-      }
-
-      console.log(`[SlopBlock] Checked ${videoIds.length} videos from cache, found ${markedVideos.length} marked`);
-      return markedVideos;
-    } catch (cacheError) {
-      console.warn('[SlopBlock] Cache query failed, falling back to API:', cacheError);
-      // Fall through to API query
-    }
-  }
-
-  // Fallback: Direct API query (legacy or if cache fails)
+  // Service worker will check its IndexedDB cache first, then fall back to API if needed
   const markedVideos = await sendMessage<Array<{
     video_id: string;
     effective_trust_points: number;
