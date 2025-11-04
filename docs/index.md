@@ -27,34 +27,20 @@ SlopBlock is a Chromium browser extension that enables crowdsourced identificati
 - **Privacy First**: Anonymous reporting with no personal data collection, local cache on your device
 - **Open Source**: 100% transparent, auditable code
 
-### Phase 4 Benefits
-
-**For Users:**
-- 🚀 **Instant checks** - No waiting for servers, everything is local
-- 📱 **Works offline** - Report videos even without internet
-- 🔒 **More private** - Marked videos cached on your device, not fetched from server
-- 🎯 **Real-time updates** - Automatic background sync every 30 minutes
-
-**For the Community:**
-- 📈 **Scales to millions** - CDN architecture supports unlimited growth
-- 💰 **Cost-effective** - 95% reduction in API calls = lower hosting costs
-- 🛡️ **Abuse-resistant** - Trust system prevents botnet attacks and brigading
-
----
-
 ## Getting Started
 
 1. **Install the Extension**
-   - Download from Chrome Web Store (coming soon)
-   - Or install manually from [GitHub releases](https://github.com/lydonator/slopblock/releases)
+   - Download from Chrome Web Store (under review)
 
 2. **Browse YouTube as Normal**
-   - Warning icons appear automatically on marked videos
+   - Warning icons appear automatically on marked video thumbnails in various feeds
    - No configuration required!
 
 3. **Report AI Content**
-   - Click the report button on watch pages
-   - Help the community identify AI-generated videos
+   - Click the report button which can be found on the bottom right of the Youtube player.
+   - Shorts can be reported with a similar circle AI button at the top of the short.
+     (More to come regarding shorts in Phase 5)
+   - Help the community identify undisclosed AI-generated slop!
 
 ---
 
@@ -69,8 +55,6 @@ SlopBlock is a Chromium browser extension that enables crowdsourced identificati
 ## Development
 
 - **GitHub Repository**: [github.com/lydonator/slopblock](https://github.com/lydonator/slopblock)
-- **Development Guide**: [CLAUDE.md](https://github.com/lydonator/slopblock/blob/main/CLAUDE.md)
-- **Project Plan**: [PROJECT_PLAN.md](https://github.com/lydonator/slopblock/blob/main/PROJECT_PLAN.md)
 
 ---
 
@@ -84,4 +68,3 @@ SlopBlock is a Chromium browser extension that enables crowdsourced identificati
 
 **Current Status**: Phase 4 Complete (CDN Caching + Optimizations)
 
-See the [project plan](https://github.com/lydonator/slopblock/blob/main/PROJECT_PLAN.md) for roadmap and development progress.
