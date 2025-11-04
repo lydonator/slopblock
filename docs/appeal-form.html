@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Submit an Appeal - SlopBlock</title>
+  <meta
+    name="description"
+    content="Submit an appeal if you believe a video, channel, or user was incorrectly flagged by SlopBlock."
+  />
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+        "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: #2d3748;
+    }
+    .container {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 600px;
+      width: 100%;
+      padding: 40px;
+      animation: slideUp 0.4s ease-out;
+    }
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: #718096;
+      margin-bottom: 32px;
+    }
+    .form-group {
+      margin-bottom: 24px;
+    }
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 8px;
+    }
+    label .required {
+      color: #e53e3e;
+      margin-left: 2px;
+    }
+    select,
+    input,
+    textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    select:focus,
+    input:focus,
+    textarea:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    textarea {
+      resize: vertical;
+      min-height: 120px;
+    }
+    .help-text {
+      font-size: 12px;
+      color: #718096;
+      margin-top: 6px;
+    }
+    .button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-top: 12px;
+    }
+    .button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+    }
+    .button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+    .button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .alert {
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    .alert-success {
+      background: #c6f6d5;
+      border: 2px solid #9ae6b4;
+      color: #22543d;
+    }
+    .alert-error {
+      background: #fed7d7;
+      border: 2px solid #fc8181;
+      color: #742a2a;
+    }
+    .footer {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 2px solid #e2e8f0;
+      text-align: center;
+      font-size: 12px;
+      color: #718096;
+    }
+    .footer a {
+      color: #667eea;
+      text-decoration: none;
+    }
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Submit an Appeal</h1>
+    <p class="subtitle">
+      If you believe content was incorrectly flagged by SlopBlock, submit an appeal below.
+    </p>
+
+    <div id="alertContainer"></div>
+
+    <form id="appealForm">
+      <div class="form-group">
+        <label for="appealType">What are you appealing? <span class="required">*</span></label>
+        <select id="appealType" name="appealType" required>
+          <option value="">-- Select --</option>
+          <option value="video">A Video (incorrectly marked as AI slop)</option>
+          <option value="channel">A Channel (brigaded or falsely targeted)</option>
+          <option value="user">My User Account (flagged incorrectly)</option>
+        </select>
+        <p class="help-text">Choose the type of content you're appealing.</p>
+      </div>
+
+      <div class="form-group">
+        <label for="subjectId">
+          <span id="subjectIdLabel">Subject ID</span> <span class="required">*</span>
+        </label>
+        <input
+          type="text"
+          id="subjectId"
+          name="subjectId"
+          placeholder="e.g., dQw4w9WgXcQ"
+          required
+        />
+        <p class="help-text" id="subjectIdHelp">
+          The YouTube video ID, channel ID, or your extension ID.
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Contact Email (optional)</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          placeholder="your.email@example.com"
+        />
+        <p class="help-text">
+          Provide an email if you'd like updates on your appeal (not required).
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label for="reasoning">Explain Your Appeal <span class="required">*</span></label>
+        <textarea
+          id="reasoning"
+          name="reasoning"
+          placeholder="Describe why you believe this content was incorrectly flagged. Be specific and provide evidence if possible."
+          required
+        ></textarea>
+        <p class="help-text">
+          Include links, timestamps, or other evidence to support your appeal.
+        </p>
+      </div>
+
+      <button type="submit" class="button" id="submitButton">Submit Appeal</button>
+    </form>
+
+    <div class="footer">
+      Part of the
+      <a href="https://github.com/yourusername/slopblock" target="_blank"
+        >SlopBlock</a
+      >
+      project. Appeals are reviewed by human moderators.
+    </div>
+  </div>
+
+  <script>
+    // ===============================================
+    // CONFIGURATION
+    // ===============================================
+    const EDGE_FUNCTION_URL =
+      'https://jbvufjdpnebzfqehbpdu.supabase.co/functions/v1/submit-appeal';
+
+    // ===============================================
+    // FORM LOGIC
+    // ===============================================
+    const form = document.getElementById('appealForm');
+    const appealTypeSelect = document.getElementById('appealType');
+    const subjectIdLabel = document.getElementById('subjectIdLabel');
+    const subjectIdHelp = document.getElementById('subjectIdHelp');
+    const alertContainer = document.getElementById('alertContainer');
+    const submitButton = document.getElementById('submitButton');
+
+    // Update label/help text dynamically
+    appealTypeSelect.addEventListener('change', (e) => {
+      const type = e.target.value;
+      switch (type) {
+        case 'video':
+          subjectIdLabel.textContent = 'Video ID';
+          subjectIdHelp.textContent =
+            'The YouTube video ID (e.g., dQw4w9WgXcQ from youtube.com/watch?v=dQw4w9WgXcQ)';
+          break;
+        case 'channel':
+          subjectIdLabel.textContent = 'Channel ID';
+          subjectIdHelp.textContent =
+            'The YouTube channel ID (e.g., UCuAXFkgsw1L7xaCfnd5JJOw)';
+          break;
+        case 'user':
+          subjectIdLabel.textContent = 'Extension ID';
+          subjectIdHelp.textContent =
+            'Your SlopBlock extension ID (found in extension settings)';
+          break;
+        default:
+          subjectIdLabel.textContent = 'Subject ID';
+          subjectIdHelp.textContent =
+            'The YouTube video ID, channel ID, or your extension ID.';
+      }
+    });
+
+    function showAlert(message, type = 'success') {
+      const alertClass = type === 'success' ? 'alert-success' : 'alert-error';
+      alertContainer.innerHTML = `<div class="alert ${alertClass}">${message}</div>`;
+      alertContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+
+      const appeal_type = formData.get('appealType');
+      const subject_id = formData.get('subjectId').trim();
+      const submitter_email = formData.get('email').trim() || null;
+      const reasoning = formData.get('reasoning').trim();
+
+      if (!appeal_type || !subject_id || !reasoning) {
+        showAlert('Please fill in all required fields.', 'error');
+        return;
+      }
+
+      submitButton.disabled = true;
+      submitButton.innerHTML = '<span class="loading"></span> Submitting...';
+      alertContainer.innerHTML = '';
+
+      try {
+        const response = await fetch(EDGE_FUNCTION_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            appeal_type,
+            subject_id,
+            submitter_email,
+            reasoning
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          showAlert(`❌ ${data.error || 'Failed to submit appeal.'}`, 'error');
+        } else if (data.success) {
+          showAlert(`✅ ${data.message}`, 'success');
+          form.reset();
+        } else {
+          showAlert(`❌ ${data.error || 'Something went wrong.'}`, 'error');
+        }
+      } catch (err) {
+        console.error('Error submitting appeal:', err);
+        showAlert(`❌ ${err.message || 'Unexpected error.'}`, 'error');
+      } finally {
+        submitButton.disabled = false;
+        submitButton.innerHTML = 'Submit Appeal';
+      }
+    });
+  </script>
+</body>
+</html>
