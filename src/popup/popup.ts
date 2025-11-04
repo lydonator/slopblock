@@ -592,21 +592,21 @@ function setupLinks(): void {
   if (helpLink) {
     helpLink.addEventListener('click', (e) => {
       e.preventDefault();
-      chrome.tabs.create({ url: 'https://lydonator.github.io/slopblock/help' });
+      chrome.tabs.create({ url: 'https://lydonator.github.io/slopblock/docs/help' });
     });
   }
 
   if (privacyLink) {
     privacyLink.addEventListener('click', (e) => {
       e.preventDefault();
-      chrome.tabs.create({ url: 'https://lydonator.github.io/slopblock/privacy' });
+      chrome.tabs.create({ url: 'https://lydonator.github.io/slopblock/docs/privacy' });
     });
   }
 
   if (feedbackLink) {
     feedbackLink.addEventListener('click', (e) => {
       e.preventDefault();
-      chrome.tabs.create({ url: 'https://lydonator.github.io/slopblock/feedback' });
+      chrome.tabs.create({ url: 'https://lydonator.github.io/slopblock/docs/feedback' });
     });
   }
 }
