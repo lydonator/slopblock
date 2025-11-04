@@ -14,8 +14,6 @@ SlopBlock helps YouTube users identify and optionally filter AI-generated "slop"
 
 **Latest Milestone (2025-11-03)**: CDN-based caching architecture with 48-hour sliding window, delta sync, and SponsorBlock-inspired optimizations. The extension now scales to millions of users with 95%+ reduction in API calls.
 
-See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the complete roadmap.
-
 ---
 
 ## The Problem
@@ -27,7 +25,7 @@ SlopBlock solves this by:
 - Using a trust-based system to prevent abuse and brigading
 - Displaying visual warnings on thumbnails of marked videos
 - Providing optional filtering to hide marked content
-- Operating at scale with local caching (no waiting for servers)
+- Operating at scale with local caching (no waiting for servers - most of the time ;)
 
 ---
 
@@ -177,11 +175,11 @@ See migration files in `migrations/` for complete schema.
 - **Input validation**: All inputs sanitized and validated
 - **Manifest V3**: Modern security standards with Content Security Policy
 - **No eval()**: No dynamic code execution
-- **CDN authentication**: Edge Functions use `--no-verify-jwt` for anonymous access (read-only operations)
+- **CDN authentication**: Edge Functions use anonymous access (read-only operations)
 
 ### Abuse Prevention
 
-- **Trust-based threshold**: 2.5 effective trust points required (not 3 raw reports)
+- **Trust-based threshold**: 2.5 effective trust points required to mark a video as legit slop!
 - **Time decay**: New accounts start at 0.3x trust, building to 1.0x over 30 days
 - **Accuracy evaluation**: Reports evaluated after 30 days based on community consensus
 - **Botnet resistance**: Coordinated fake accounts have minimal impact due to trust weighting
@@ -256,11 +254,10 @@ This project is currently in Phase 4 (production-ready). Contributions are welco
 **How to contribute:**
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Review [CLAUDE.md](CLAUDE.md) for development guidelines
-4. Make your changes with clear commit messages
-5. Test changes on multiple Chromium browsers
-6. Update documentation if needed
-7. Submit a pull request
+3. Make your changes with clear commit messages
+4. Define clear test case and outcomes
+5. Update documentation if needed
+6. Submit a pull request
 
 ### Development Guidelines
 
@@ -274,9 +271,8 @@ This project is currently in Phase 4 (production-ready). Contributions are welco
 
 ### Areas for Contribution
 
-- **Testing**: Browser testing suite (Jest + Playwright)
 - **Performance**: Profiling and optimization
-- **UI/UX**: Popup redesign, new themes
+- **UI/UX**: Any improvements would be great
 - **Features**: Enhanced statistics, trends, insights
 - **Documentation**: Tutorials, videos, translations
 - **Bug Fixes**: See [GitHub Issues](https://github.com/lydonator/slopblock/issues)
@@ -287,15 +283,15 @@ This project is currently in Phase 4 (production-ready). Contributions are welco
 
 ### How does SlopBlock determine if content is AI-generated?
 
-SlopBlock doesn't automatically detect AI content. It relies on crowdsourced reports from users. When a video reaches the community trust threshold (2.5 effective trust points weighted by reporter credibility), it displays a warning to all extension users.
+SlopBlock doesn't automatically detect AI content. It relies on crowdsourced reports from users. When a video reaches the community trust threshold (2.5 effective trust points weighted by reporter credibility), it displays a warning to all extension users, or filters the videos from feeds if you opted in via popup setting.
 
 ### What's the trust system?
 
-New users start with lower trust (30%) that builds to full trust (100%) over 30 days. Additionally, your accuracy rate affects your trust score. This prevents coordinated attacks from fake accounts or botnets while allowing legitimate users to contribute immediately.
+New users start with lower trust (30%) that builds to full trust (100%) over 30 days. Additionally, your accuracy rate affects your trust score. This prevents coordinated attacks from fake accounts or brigading while allowing legitimate users to contribute immediately.
 
 ### Will this harm legitimate content creators?
 
-The trust-weighted threshold system helps prevent false positives. Additionally, the extension only shows warnings by default - it doesn't hide videos unless the user explicitly enables auto-hide. Creators who disclose AI use in their descriptions/titles shouldn't be reported.
+The trust-weighted threshold system helps prevent false positives. Additionally, the extension only shows warnings by default - it doesn't hide videos unless the user explicitly enables auto-hide. Creators who disclose AI use in their descriptions/titles shouldn't be reported. We do however have a few measures in place to protect users from false reporting other than the Trust System. Users who feel that they have been unfairly targeted can have their videos reviewed through our custom appeals form. A human moderator will review those appeals and make a decision on whether to uphold or reject that appeal based on the content they review. If a channel is found to be unfairly targeted, they can have their site whitelisted from all further reports. Additionally, if our system receives 10 or more reports that flag a Youtube "Verified Account", it will automatically mark them as verified in our database and they also will be whitelisted from further reporting. 
 
 ### Is my data private?
 
@@ -303,7 +299,7 @@ Yes. SlopBlock collects zero personal information. The only identifier used is y
 
 ### Does this violate YouTube's Terms of Service?
 
-No. SlopBlock is a client-side extension that adds visual overlays to YouTube's interface. It doesn't automate actions, scrape private data, or interfere with YouTube's core functionality. Similar extensions like SponsorBlock and Return YouTube Dislike operate under the same principles.
+No. SlopBlock is a client-side extension that adds visual overlays to YouTube's interface. It doesn't automate actions, scrape private data, or interfere with YouTube's core functionality. Similar extensions like SponsorBlock operate under the same principles.
 
 ### Will this work on mobile?
 
@@ -311,20 +307,20 @@ Not currently. The extension targets desktop Chromium browsers only. Mobile brow
 
 ### How much does it cost to run?
 
-Currently running on Supabase free tier with CDN caching architecture. With Phase 4 optimizations, the free tier can support ~10,000 active users. For larger scale (100K+ users), a paid Supabase tier or migration to Cloudflare R2 + Workers will be required.
+This is difficult to pin down until we have a settled idea of what the userbase will be. But this is one of those strange projects that sort of get cheaper to run the more people are involved. Why? Well, the more reports you have that reach 'consensus', the less videos you might have being reported. And the less videos available to report, the less strain on the infrastructure. What that critical mass looks like, not sure yet, but excited to find out :)
 
 ### Can I export my reports?
 
-Not yet, but this is planned for a future version for data portability.
+Please see the **Your Right & Control** section in the following doc: https://lydonator.github.io/slopblock/docs/privacy
 
 ### Why IndexedDB instead of chrome.storage?
 
-IndexedDB allows larger storage (gigabytes vs. ~5MB for chrome.storage), faster queries with indexes, and better performance for caching thousands of video entries. It's the same approach SponsorBlock uses.
+IndexedDB allows larger storage, faster queries with indexes, and better performance for caching potentially thousands of video entries. It's the same approach SponsorBlock uses.
 
 ### How often does the cache update?
 
-- **Background delta sync**: Every 30 minutes (automatic, fetches only changes)
-- **Full blob refresh**: Every hour (automatic, full cache regeneration)
+- **Background delta sync**: Every 30 minutes (automatic, fetches only changes since the last delta)
+- **Full blob refresh**: Every 6 hours (automatic, full cache regeneration)
 - **Manual refresh**: Available in popup at any time
 - **After reporting**: Your new reports sync immediately
 
@@ -332,7 +328,7 @@ IndexedDB allows larger storage (gigabytes vs. ~5MB for chrome.storage), faster 
 
 ## Inspiration & Similar Projects
 
-- **[SponsorBlock](https://sponsor.block/)**: Crowdsourced sponsor segment skipping (primary inspiration for architecture)
+- **[SponsorBlock]**: Crowdsourced sponsor segment skipping (primary inspiration for this project)
 
 ---
 
@@ -349,16 +345,8 @@ TBD (will be decided before public release - likely MIT or GPL-3.0)
 - **Privacy**: [Privacy Policy](https://lydonator.github.io/slopblock/privacy)
 - **Feedback**: [Submit Feedback](https://lydonator.github.io/slopblock/feedback)
 
----
-
-## Acknowledgments
-
-- Inspired by Ajay and the SponsorBlock community and project architecture
-- Built with Supabase open-source infrastructure
-- Powered by the Chrome Extensions platform
-- Thanks to all early testers and contributors
 
 ---
 
-**Current Development Status**: Phase 4 Complete - Production-ready with CDN caching and trust system
+**Current Development Status**: Phase 4 Complete - Production-ready with CDN caching and trust system -- Under review with the Chrome Web Store --
 
