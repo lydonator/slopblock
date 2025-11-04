@@ -76,7 +76,7 @@ Want to discuss the project, share ideas, or connect with other users?
 
 If you enjoy SlopBlock, please consider:
 
-1. **Star the GitHub repo:** [github.com/yourusername/slopblock](https://github.com/lydonator/slopblock)
+1. **Star the GitHub repo:** [github.com/lydonator/slopblock](https://github.com/lydonator/slopblock)
 2. **Rate on Chrome Web Store:** Leave a review to help others discover SlopBlock
 3. **Share with friends:** Spread the word on social media
 
