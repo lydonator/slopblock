@@ -112,8 +112,6 @@ We're a small open-source project, but we do our best to respond quickly:
 
 Want to contribute code, documentation, or translations?
 
-**Contributing Guide:** [CONTRIBUTING.md](https://github.com/lydonator/slopblock/blob/main/CONTRIBUTING.md)
-
 **Areas we need help:**
 - Code review and testing
 - Documentation improvements
@@ -123,9 +121,8 @@ Want to contribute code, documentation, or translations?
 
 **How to start:**
 1. Fork the repository
-2. Read the [CLAUDE.md](https://github.com/lydonator/slopblock/blob/main/CLAUDE.md) dev guide
-3. Open a Pull Request with your changes
-4. We'll review and merge!
+2. Open a Pull Request with your changes
+3. We'll review and merge!
 
 ---
 
@@ -189,18 +186,6 @@ Want to know what we're working on?
 
 **Your vote matters!** Comment on feature requests to help us prioritize.
 
----
-
-## Alternative Contact Methods
-
-### Email
-(Add email if you want to provide one)
-
-### Social Media
-(Add Twitter, Discord, Reddit, etc. if applicable)
-
-### Community Forums
-(Add links to any community forums you've created)
 
 ---
 
@@ -231,4 +216,4 @@ A: Absolutely! Regular contributors may be invited to join the maintainer team. 
 
 ---
 
-*Last updated: November 3, 2025*
+*Last updated: November 4, 2025*
