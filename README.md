@@ -77,277 +77,6 @@ SlopBlock solves this by:
 
 ---
 
-## Getting Started
-
-### Prerequisites
-
-- Node.js 18+ and npm
-- Chrome or Chromium-based browser
-- Supabase account (free tier)
-
-### Quick Start
-
-1. **Clone and Install**:
-   ```bash
-   git clone https://github.com/lydonator/slopblock.git
-   cd slopblock
-   npm install
-   ```
-
-2. **Set Up Supabase**:
-   - Create a free Supabase project at https://supabase.com/
-   - Run the following SQL migrations in order:
-     - `migrations/DATABASE_SETUP.sql` (base schema)
-     - `migrations/DATABASE_PHASE3_MIGRATION.sql` (trust system)
-     - `migrations/DATABASE_PHASE3_TRUST_ENHANCEMENT.sql` (hybrid scoring)
-     - `migrations/DATABASE_PHASE4_CDN_MIGRATION.sql` (caching tables)
-   - Deploy Edge Functions:
-     ```bash
-     supabase functions deploy generate-48h-blob --no-verify-jwt
-     supabase functions deploy generate-delta --no-verify-jwt
-     ```
-   - Set up cron job for hourly cache regeneration (Supabase Dashboard → Database → Cron Jobs):
-     ```sql
-     SELECT cron.schedule(
-       'regenerate-48h-blob',
-       '0 * * * *',
-       $$SELECT generate_48h_blob();$$
-     );
-     ```
-   - Copy your project URL and anon key
-
-3. **Configure Environment**:
-   ```bash
-   # Create .env file
-   cp .env.example .env
-
-   # Add your Supabase credentials
-   VITE_SUPABASE_URL=https://xxxxx.supabase.co
-   VITE_SUPABASE_ANON_KEY=eyJ...
-   ```
-
-4. **Build Extension**:
-   ```bash
-   # Development build with hot reload
-   npm run dev
-
-   # Production build
-   npm run build
-   ```
-
-5. **Load in Chrome**:
-   - Navigate to `chrome://extensions/`
-   - Enable "Developer mode"
-   - Click "Load unpacked"
-   - Select the `dist/` folder
-
-For detailed setup instructions, see [QUICKSTART.md](QUICKSTART.md).
-
----
-
-## Project Structure
-
-```
-slopblock/
-├── src/
-│   ├── background/
-│   │   ├── service-worker.ts    # Extension lifecycle + message routing
-│   │   ├── api.ts               # Supabase API integration
-│   │   └── cache-manager.ts     # CDN cache with delta sync (Phase 4)
-│   ├── content/
-│   │   ├── youtube.ts           # YouTube page injection
-│   │   └── youtube.css          # Styles for icons, buttons, blur effects
-│   ├── popup/
-│   │   ├── popup.ts             # Extension popup logic
-│   │   ├── popup.html           # Popup UI
-│   │   └── popup.css            # Popup styles
-│   ├── lib/
-│   │   ├── storage.ts           # Chrome storage utilities
-│   │   ├── queue-manager.ts     # IndexedDB batching (Phase 3)
-│   │   ├── indexeddb.ts         # IndexedDB cache layer (Phase 4)
-│   │   ├── constants.ts         # Configuration constants
-│   │   └── supabase.ts          # Supabase client setup
-│   ├── types/
-│   │   └── index.ts             # TypeScript type definitions
-│   └── manifest.json            # Extension manifest
-├── public/
-│   └── icons/                   # Extension icons
-├── migrations/
-│   ├── DATABASE_SETUP.sql                      # Phase 0-2: Base schema
-│   ├── DATABASE_PHASE3_MIGRATION.sql           # Phase 3: Trust tables
-│   ├── DATABASE_PHASE3_TRUST_ENHANCEMENT.sql   # Phase 3: Hybrid scoring
-│   └── DATABASE_PHASE4_CDN_MIGRATION.sql       # Phase 4: Cache tables
-├── supabase/functions/
-│   ├── generate-48h-blob/       # Edge function: hourly blob generation
-│   └── generate-delta/          # Edge function: real-time delta sync
-├── docs/                        # GitHub Pages documentation
-│   ├── index.md                 # Documentation homepage
-│   ├── help.md                  # User guide
-│   ├── privacy.md               # Privacy policy
-│   └── feedback.md              # Feedback and support
-├── PROJECT_PLAN.md              # Complete specification
-├── QUICKSTART.md                # Setup guide
-├── CLAUDE.md                    # Claude Code development guide
-└── README.md                    # This file
-```
-
----
-
-## Documentation
-
-- **[User Guide](https://lydonator.github.io/slopblock/help)**: How to use SlopBlock (GitHub Pages)
-- **[Privacy Policy](https://lydonator.github.io/slopblock/privacy)**: Data handling and privacy (GitHub Pages)
-- **[Feedback & Support](https://lydonator.github.io/slopblock/feedback)**: Bug reports and feature requests (GitHub Pages)
-- **[PROJECT_PLAN.md](PROJECT_PLAN.md)**: Complete technical specification, architecture, and roadmap
-- **[QUICKSTART.md](QUICKSTART.md)**: Step-by-step setup and development guide
-- **[CLAUDE.md](CLAUDE.md)**: Claude Code development guide with implementation notes
-
----
-
-## Development Roadmap
-
-### ✅ Phase 0: Project Setup (Complete - 2025-10-28)
-- [x] Project structure and tooling
-- [x] Supabase database setup
-- [x] Development environment ready
-
-### ✅ Phase 1: Core Reporting (Complete - 2025-10-29)
-- [x] Report button on watch page player controls
-- [x] Report button on Shorts pages
-- [x] API integration with Supabase
-- [x] Undo functionality with state management
-
-### ✅ Phase 2: Visual Warnings (Complete - 2025-10-31)
-- [x] Glossy animated icon overlays on thumbnails
-- [x] Thumbnail blur effects with hover-to-preview
-- [x] Dynamic content handling with MutationObserver
-- [x] SPA navigation cleanup (prevent stale state)
-- [x] Batch video checking
-
-### ✅ Phase 3: Trust System (Complete - 2025-11-01)
-- [x] Hybrid trust scoring (50% time + 50% accuracy)
-- [x] Time-based decay (0.3x → 1.0x over 30 days)
-- [x] Accuracy evaluation (30-day delayed consensus)
-- [x] Trust-weighted threshold (2.5 effective trust points)
-- [x] Client-side batching with IndexedDB queue
-- [x] Offline reporting with automatic retry
-- [x] Pre-computed aggregate cache for fast lookups
-- [x] Trust score display in popup
-- [x] Daily cron job for accuracy evaluation
-
-### ✅ Phase 4: CDN Caching (Complete - 2025-11-03)
-- [x] 48-hour sliding window cache architecture
-- [x] Hourly blob regeneration (Supabase Storage CDN)
-- [x] 30-minute delta sync for real-time updates
-- [x] Client-side IndexedDB cache with automatic pruning
-- [x] Edge Functions for cache generation
-- [x] SponsorBlock-inspired optimizations:
-  - [x] Batched storage writes (100ms debounce)
-  - [x] Persistent popup connection (chrome.runtime.Port)
-  - [x] Config migration system (version-tracked)
-- [x] Cache management UI (refresh, clear, force delta)
-- [x] 95%+ reduction in API calls
-
-### ⏸️ Phase 5: Enhanced Features (Future)
-- [ ] Shorts video blur/pause/dismiss system
-- [ ] Auto-hide improvements
-- [ ] Enhanced statistics and insights
-- [ ] Testing suite (Jest + Playwright)
-- [ ] Performance profiling
-
-### ⏸️ Phase 6: Scaling & Migration (Future)
-- [ ] Migrate to Cloudflare R2 + Workers (~$5-10/month for 1M users)
-- [ ] Multi-region CDN optimization
-- [ ] Advanced abuse prevention
-- [ ] Community moderation tools
-- [ ] Public beta release
-
-For detailed phase information, see [PROJECT_PLAN.md](PROJECT_PLAN.md).
-
----
-
-## Architecture Overview
-
-```
-Browser Extension (Frontend)
-├── Background Service Worker
-│   ├── Cache Manager (Phase 4)
-│   │   ├── Download 48h blob on install/update
-│   │   ├── Delta sync every 30 minutes
-│   │   ├── Automatic cache pruning
-│   │   └── Force refresh + manual sync
-│   ├── Queue Manager (Phase 3)
-│   │   ├── IndexedDB persistent queue
-│   │   ├── Batch uploads (10 reports or 5 min)
-│   │   └── Automatic retry (up to 3 attempts)
-│   ├── API communication with Supabase
-│   │   ├── Batch report uploads
-│   │   ├── Trust score queries
-│   │   └── Community statistics
-│   └── Extension ID management
-
-├── Content Scripts (YouTube)
-│   ├── Thumbnail observation (MutationObserver)
-│   ├── Warning icon injection (glossy SVG with shine)
-│   ├── Thumbnail blur effects (psychological UX)
-│   ├── Report button on watch page (player controls)
-│   ├── Report button on Shorts (action buttons)
-│   ├── Toast notifications
-│   └── SPA navigation cleanup
-
-├── IndexedDB Layer (Phase 4)
-│   ├── Marked videos cache (48h window)
-│   ├── Video metadata with timestamps
-│   ├── Efficient queries by video ID
-│   └── Delta merge support
-
-└── Popup UI
-    ├── Settings (auto-hide toggle)
-    ├── Trust score display (color-coded)
-    ├── Statistics (user reports + global marked)
-    ├── Cache management (refresh, clear, force delta)
-    └── Persistent connection to background worker
-
-                    ↓ HTTPS REST API / CDN
-
-Supabase Backend
-├── PostgreSQL Database
-│   ├── Core Tables
-│   │   ├── videos (backward-compatible report_count)
-│   │   └── reports (trust_weight, accuracy_status)
-│   ├── Phase 3 Trust Tables
-│   │   ├── extension_trust (hybrid trust scoring)
-│   │   └── video_aggregates_cache (CDN-ready)
-│   └── Phase 4 Cache Tables
-│       ├── cache_48h_blob (full cache metadata)
-│       └── cache_delta_log (incremental updates)
-│
-├── Edge Functions (Phase 4)
-│   ├── generate-48h-blob (hourly cron)
-│   └── generate-delta (real-time sync)
-│
-├── Storage CDN (Phase 4)
-│   ├── 48h-cache.json (full blob, regenerated hourly)
-│   └── delta-{timestamp}.json (incremental updates)
-│
-└── PostgreSQL Functions
-    ├── Legacy Functions
-    │   ├── report_video()
-    │   ├── remove_report()
-    │   └── get_marked_videos()
-    ├── Phase 3 Functions
-    │   ├── batch_report_videos()
-    │   ├── get_marked_videos_weighted()
-    │   ├── check_user_report_weighted()
-    │   ├── calculate_trust_score()
-    │   ├── calculate_accuracy_rate()
-    │   └── evaluate_report_accuracy()
-    └── Phase 4 Functions
-        ├── generate_48h_blob()
-        └── get_delta_updates()
-```
-
----
 
 ## Database Schema
 
@@ -422,7 +151,7 @@ Supabase Backend
 - `refresh_video_aggregate(video_id)`: Update cache after report changes
 
 **Phase 4 Functions:**
-- `generate_48h_blob()`: Generate full cache blob (called hourly by cron)
+- `generate_48h_blob()`: Generate full cache blob (called 6 hourly by cron)
 - `get_delta_updates(since_timestamp)`: Get incremental updates since last sync
 
 See migration files in `migrations/` for complete schema.
@@ -582,7 +311,7 @@ Not currently. The extension targets desktop Chromium browsers only. Mobile brow
 
 ### How much does it cost to run?
 
-Currently running on Supabase free tier with CDN caching architecture. With Phase 4 optimizations, the free tier can support ~10,000 active users. For larger scale (100K+ users), a paid Supabase tier (~$25/month) or migration to Cloudflare R2 + Workers (~$5-10/month) would be needed.
+Currently running on Supabase free tier with CDN caching architecture. With Phase 4 optimizations, the free tier can support ~10,000 active users. For larger scale (100K+ users), a paid Supabase tier or migration to Cloudflare R2 + Workers will be required.
 
 ### Can I export my reports?
 
@@ -604,8 +333,6 @@ IndexedDB allows larger storage (gigabytes vs. ~5MB for chrome.storage), faster 
 ## Inspiration & Similar Projects
 
 - **[SponsorBlock](https://sponsor.block/)**: Crowdsourced sponsor segment skipping (primary inspiration for architecture)
-- **[Return YouTube Dislike](https://returnyoutubedislike.com/)**: Restores YouTube dislike counts
-- **[DeArrow](https://dearrow.ajay.app/)**: Crowdsourced clickbait thumbnail/title replacement
 
 ---
 
@@ -626,7 +353,7 @@ TBD (will be decided before public release - likely MIT or GPL-3.0)
 
 ## Acknowledgments
 
-- Inspired by the SponsorBlock community and project architecture
+- Inspired by Ajay and the SponsorBlock community and project architecture
 - Built with Supabase open-source infrastructure
 - Powered by the Chrome Extensions platform
 - Thanks to all early testers and contributors
@@ -635,6 +362,3 @@ TBD (will be decided before public release - likely MIT or GPL-3.0)
 
 **Current Development Status**: Phase 4 Complete - Production-ready with CDN caching and trust system
 
-See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the complete roadmap and implementation details.
-
-See [CLAUDE.md](CLAUDE.md) for detailed development guide and implementation notes.
