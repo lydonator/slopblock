@@ -274,7 +274,7 @@ SlopBlock requests these Chrome permissions:
 **Access:** Local browser storage only (not cloud sync)
 
 ### `host_permissions: *://*.youtube.com/*`
-**Why:** Inject scripts on YouTube pages to show warnings
+**Why:** Inject scripts on YouTube pages to show warnings and report button (Youtube Player)
 **Access:** Only YouTube domain, no access to other sites
 
 ### No Other Permissions
