@@ -353,7 +353,7 @@ You can:
 
 **GitHub Issues:** https://github.com/lydonator/slopblock/issues
 
-**Email:** (Add your contact email if desired)
+**Email:** support@slopblock.cc
 
 ### Data Requests
 
