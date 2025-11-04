@@ -88,9 +88,9 @@ No setup required! SlopBlock works immediately:
 - ✅ **Green Checkmark** - You've already reported this video
 - ⛔ **Gray Circle** - You removed your report (can't report again)
 
-**Offline Reporting:**
+**Batched Reporting:**
 
-You can report videos even without internet! Reports queue locally and upload automatically when you're back online. You'll see toast notifications confirming each action.
+Reports are queued locally and uploaded in batches for better performance. If your connection drops temporarily while reporting, your reports are safely stored and will sync automatically when connection resumes.
 
 ### What to Report
 
