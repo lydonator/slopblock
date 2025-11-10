@@ -34,7 +34,7 @@ interface CDNDeltaResponse {
   metadata: {
     generated_at: string;
     since: string;
-    total_updates: number;
+    total_updates?: number; // Optional - Edge Function might use different field names
   };
   videos: MarkedVideo[];
 }
@@ -303,25 +303,29 @@ function validateDeltaResponse(data: any): asserts data is CDNDeltaResponse {
     });
   }
 
-  if (!Number.isInteger(data.metadata.total_updates) || data.metadata.total_updates < 0) {
-    throw new CDNValidationError('Invalid metadata.total_updates: must be non-negative integer', {
-      total_updates: data.metadata.total_updates,
-    });
-  }
-
-  // Validate videos array
+  // Validate videos array first (more important than metadata count)
   if (!Array.isArray(data.videos)) {
     throw new CDNValidationError('Invalid videos field in delta response: must be an array', {
       videos: data.videos,
     });
   }
 
-  // Check array length matches metadata
-  if (data.videos.length !== data.metadata.total_updates) {
-    throw new CDNValidationError(
-      'Delta videos array length does not match metadata.total_updates',
-      { expected: data.metadata.total_updates, actual: data.videos.length }
-    );
+  // Validate total_updates if present, but don't require exact match
+  // Edge Function might return different field names or omit this field
+  if (data.metadata.total_updates !== undefined) {
+    if (!Number.isInteger(data.metadata.total_updates) || data.metadata.total_updates < 0) {
+      throw new CDNValidationError('Invalid metadata.total_updates: must be non-negative integer', {
+        total_updates: data.metadata.total_updates,
+      });
+    }
+
+    // Warn if count doesn't match, but don't fail validation
+    // (Edge Function might use different counting logic)
+    if (data.videos.length !== data.metadata.total_updates) {
+      console.warn(
+        `[SlopBlock] Delta metadata count mismatch: expected ${data.metadata.total_updates}, got ${data.videos.length} videos. Using actual array length.`
+      );
+    }
   }
 
   // Validate each video in delta (deltas are typically small, so validate all)
