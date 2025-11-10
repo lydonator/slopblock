@@ -184,7 +184,7 @@ We explicitly **do not** collect:
 
 ### Local Caching (Phase 4)
 
-- **Background downloads**: Full cache blob hourly + delta syncs every 30 minutes
+- **Background downloads**: Full cache blob 24 hourly + delta blobs every 30 minutes
 - **Local storage**: Marked videos cached in IndexedDB on your device
 - **Privacy benefit**: Video checks happen locally with no server communication
 
