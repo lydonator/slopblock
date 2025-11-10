@@ -151,8 +151,6 @@ SlopBlock solves this by:
 - `generate_48h_blob()`: Generate full cache blob (called 6 hourly by cron)
 - `get_delta_updates(since_timestamp)`: Get incremental updates since last sync
 
-See migration files in `migrations/` for complete schema.
-
 ---
 
 ## Security & Privacy
@@ -181,7 +179,7 @@ See migration files in `migrations/` for complete schema.
 - **Trust-based threshold**: 2.5 effective trust points required to mark a video as legit slop!
 - **Time decay**: New accounts start at 0.3x trust, building to 1.0x over 30 days
 - **Accuracy evaluation**: Reports evaluated after 30 days based on community consensus
-- **Botnet resistance**: Coordinated fake accounts have minimal impact due to trust weighting
+- **Brigading resistance**: Coordinated fake accounts have minimal impact due to trust weighting
 - **Report finality**: Can't re-report a video after removing report (prevents gaming)
 - **Batch validation**: All batch uploads validated server-side
 
@@ -223,7 +221,7 @@ trust_weight = trust_score (0.30-1.00 range)
 
 **Phase 4 (CDN Caching):**
 - Video checking: 95%+ reduction (local IndexedDB lookups)
-- Full blob download: Once on install, then hourly in background
+- Full blob download: Once on install, then 24 hourly in background
 - Delta sync: Every 30 minutes (only fetches changes)
 - Result: **Checking 100 videos = 0 API calls** (instant local lookups)
 
@@ -236,12 +234,11 @@ trust_weight = trust_score (0.30-1.00 range)
 
 **Background Updates:**
 - Delta sync every 30 minutes (fetches only changes)
-- Full blob refresh hourly (in background, user doesn't notice)
+- Full blob refresh 24 hourly (in background, user doesn't notice)
 - Manual refresh available in popup
 
 **Offline Support:**
 - Reports queue in IndexedDB
-- Video checks use stale cache (better than nothing)
 - Automatic sync when back online
 
 ---
@@ -290,7 +287,7 @@ New users start with lower trust (30%) that builds to full trust (100%) over 30 
 
 ### Will this harm legitimate content creators?
 
-The trust-weighted threshold system helps prevent false positives. Additionally, the extension only shows warnings by default - it doesn't hide videos unless the user explicitly enables auto-hide. Creators who disclose AI use in their descriptions/titles shouldn't be reported. We do however have a few measures in place to protect users from false reporting other than the Trust System. Users who feel that they have been unfairly targeted can have their videos reviewed through our custom appeals form. A human moderator will review those appeals and make a decision on whether to uphold or reject that appeal based on the content they review. If a channel is found to be unfairly targeted, they can have their site whitelisted from all further reports. Additionally, if our system receives 10 or more reports that flag a Youtube "Verified Account", it will automatically mark them as verified in our database and they also will be whitelisted from further reporting. 
+The trust-weighted threshold system helps prevent false positives. Additionally, the extension only shows warnings by default - it doesn't hide videos unless the user explicitly enables auto-hide. Creators who disclose AI use in their descriptions/titles shouldn't be reported. We do however have a few measures in place to protect users from false reporting other than the Trust System. Users who feel that they have been unfairly targeted can have their videos reviewed through our custom appeals form. A human moderator will review those appeals and make a decision on whether to uphold or reject that appeal based on the content they review. If a channel is found to be unfairly targeted, they can have their site whitelisted from all further reports. Additionally, if our system receives 10 or more reports that flag a Youtube "Verified Account", it will automatically mark them as "verified" in our database and they will be whitelisted from further reporting. 
 
 ### Is my data private?
 
@@ -310,16 +307,16 @@ This is difficult to pin down until we have a settled idea of what the userbase 
 
 ### Can I export my reports?
 
-Please see the **Your Right & Control** section in the following doc: https://lydonator.github.io/slopblock/docs/privacy
+Please see the **Your Rights & Control** section in the following doc: https://lydonator.github.io/slopblock/docs/privacy
 
 ### Why IndexedDB instead of chrome.storage?
 
-IndexedDB allows larger storage, faster queries with indexes, and better performance for caching potentially thousands of video entries. It's the same approach SponsorBlock uses.
+IndexedDB allows larger storage, faster queries with indexes, and better performance for caching potentially thousands of video entries.
 
 ### How often does the cache update?
 
 - **Background delta sync**: Every 30 minutes (automatic, fetches only changes since the last delta)
-- **Full blob refresh**: Every 6 hours (automatic, full cache regeneration)
+- **Full blob refresh**: Every 24 hours (automatic, full cache regeneration) 
 - **Manual refresh**: Available in popup at any time
 - **After reporting**: Your new reports sync immediately
 
