@@ -336,10 +336,10 @@ TBD (will be decided before public release - likely MIT or GPL-3.0)
 
 ## Support & Contact
 
-- **Documentation**: [SlopBlock Help](https://lydonator.github.io/slopblock/help)
+- **Documentation**: [SlopBlock Help](https://lydonator.github.io/slopblock/docs/help)
 - **Issues**: [GitHub Issues](https://github.com/lydonator/slopblock/issues)
-- **Privacy**: [Privacy Policy](https://lydonator.github.io/slopblock/privacy)
-- **Feedback**: [Submit Feedback](https://lydonator.github.io/slopblock/feedback)
+- **Privacy**: [Privacy Policy](https://lydonator.github.io/slopblock/docs/privacy)
+- **Feedback**: [Submit Feedback](https://lydonator.github.io/slopblock/docs/feedback)
 
 
 ---
