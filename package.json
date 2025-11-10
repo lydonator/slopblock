@@ -1,6 +1,6 @@
 {
   "name": "slopblock",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Crowdsourced identification and filtering of AI-generated content on YouTube",
   "type": "module",
   "scripts": {
@@ -21,7 +21,8 @@
   "license": "UNLICENSED",
   "dependencies": {
     "@supabase/supabase-js": "^2.77.0",
-    "idb": "^8.0.3"
+    "idb": "^8.0.3",
+    "supabase": "^2.54.11"
   },
   "devDependencies": {
     "@crxjs/vite-plugin": "^2.2.1",

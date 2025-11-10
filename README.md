@@ -219,7 +219,7 @@ trust_weight = trust_score (0.30-1.00 range)
 - 100 thumbnails = 100 API calls
 
 **Phase 3 (Batching):**
-- Reporting: 90% reduction (batch every 10 reports or 5 minutes)
+- Reporting: 90% reduction (batch every 10 reports or 10 minutes)
 - Video checking: No improvement
 
 **Phase 4 (CDN Caching):**

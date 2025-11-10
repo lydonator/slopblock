@@ -5,18 +5,35 @@
 
 import { MessageType, type ExtensionMessage, type MessageResponse } from '../types';
 import { CSS_CLASSES } from '../lib/constants';
-import { getUserReportState, setUserReportState, ReportState, getAutoHideEnabled, getExtensionId } from '../lib/storage';
-import { getQueueManager } from '../lib/queue-manager';
+import { getUserReportState, setUserReportState, ReportState, getAutoHideEnabled } from '../lib/storage';
+import { ButtonState, ButtonRendererFactory } from './button-renderers';
+import { ThumbnailScanner } from './thumbnail-scanner';
 import './youtube.css'; // Import CSS to ensure it's bundled
 
-// Initialize queue manager
-let queueManager: Awaited<ReturnType<typeof getQueueManager>> | null = null;
-getQueueManager().then(manager => {
-  queueManager = manager;
-  console.log('[SlopBlock] Queue manager initialized');
-}).catch(error => {
-  console.error('[SlopBlock] Failed to initialize queue manager:', error);
-});
+/**
+ * Error Boundary Wrapper
+ * Wraps async event handlers to prevent unhandled promise rejections
+ * Shows user-friendly toast notification on errors and logs details
+ */
+function withErrorBoundary<T extends any[]>(
+  fn: (...args: T) => Promise<void>,
+  context: string
+): (...args: T) => void {
+  return (...args: T): void => {
+    fn(...args).catch((error: any) => {
+      // Log error with context for debugging
+      console.error(`[SlopBlock] Error in ${context}:`, error);
+
+      // Don't show toast for extension context invalidation (normal during reload)
+      if (error?.message?.includes('Extension context invalidated')) {
+        return;
+      }
+
+      // Show user-friendly error message
+      showToast(`Operation failed: ${error?.message || 'Unknown error'}. Please try again.`, 4000);
+    });
+  };
+}
 
 /**
  * Send a message to the background service worker
@@ -49,84 +66,6 @@ async function sendMessage<T>(message: ExtensionMessage): Promise<T> {
       reject(error);
     }
   });
-}
-
-/**
- * Extract video ID from various YouTube page elements (thumbnails)
- * @param element - DOM element that might contain a video ID
- * @returns Video ID or null if not found
- */
-function extractVideoIdFromThumbnail(element: Element): string | null {
-  // Method 1: Look for link INSIDE the element (not parent)
-  const link = element.querySelector('a[href*="/watch?v="]') as HTMLAnchorElement;
-  if (link) {
-    try {
-      const url = new URL(link.href);
-      const videoId = url.searchParams.get('v');
-      if (videoId && videoId.length === 11) {
-        return videoId;
-      }
-    } catch (e) {
-      // Invalid URL, continue to next method
-    }
-  }
-
-  // Method 2: Try Shorts URLs inside the element
-  const shortsLink = element.querySelector('a[href*="/shorts/"]') as HTMLAnchorElement;
-  if (shortsLink) {
-    const match = shortsLink.href.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
-    if (match) {
-      return match[1];
-    }
-  }
-
-  // Method 3: Check if element itself is a link
-  if (element.tagName === 'A') {
-    const href = (element as HTMLAnchorElement).href;
-    if (href.includes('/watch?v=')) {
-      try {
-        const url = new URL(href);
-        const videoId = url.searchParams.get('v');
-        if (videoId && videoId.length === 11) {
-          return videoId;
-        }
-      } catch (e) {
-        // Invalid URL
-      }
-    }
-    if (href.includes('/shorts/')) {
-      const match = href.match(/\/shorts\/([a-zA-Z0-9_-]{11})/);
-      if (match) {
-        return match[1];
-      }
-    }
-  }
-
-  // Method 4: Try to get from data attributes
-  const videoId = element.getAttribute('data-video-id');
-  if (videoId && videoId.length === 11) {
-    return videoId;
-  }
-
-  // Method 5: Check child elements for data-video-id
-  const childWithId = element.querySelector('[data-video-id]');
-  if (childWithId) {
-    const id = childWithId.getAttribute('data-video-id');
-    if (id && id.length === 11) {
-      return id;
-    }
-  }
-
-  // Method 6: Check parent elements for data-video-id (as last resort)
-  const parentWithId = element.closest('[data-video-id]');
-  if (parentWithId) {
-    const id = parentWithId.getAttribute('data-video-id');
-    if (id && id.length === 11) {
-      return id;
-    }
-  }
-
-  return null;
 }
 
 /**
@@ -423,9 +362,12 @@ function addWarningIcon(thumbnail: Element, videoId: string, reportCount: number
     </svg>
   `;
 
-  // Add hover tooltip functionality
-  icon.addEventListener('mouseenter', (e) => showTooltip(e.target as HTMLElement, videoId, reportCount));
-  icon.addEventListener('mouseleave', hideTooltip);
+  // Add hover tooltip functionality (wrapped with error boundary)
+  icon.addEventListener('mouseenter', withErrorBoundary(
+    async (e) => showTooltip(e.target as HTMLElement, videoId, reportCount),
+    'tooltip:mouseenter'
+  ));
+  icon.addEventListener('mouseleave', () => hideTooltip());
 
   // Add class to thumbnail container to trigger blur effect
   const thumbnailContainer = thumbnail.closest('ytd-thumbnail, ytd-video-renderer, ytd-grid-video-renderer, ytd-rich-item-renderer, ytd-reel-item-renderer');
@@ -480,16 +422,17 @@ function hideTooltip(): void {
 const processedVideoIds = new Set<string>();
 
 /**
- * Debounce timer for batch processing
+ * Global thumbnail scanner instance (with caching)
  */
-let thumbnailProcessTimer: number | null = null;
+const thumbnailScanner = new ThumbnailScanner();
 
 /**
  * Process all visible thumbnails on the page
+ * @param overrideAutoHide - Optional override for auto-hide setting (used when responding to toggle changes)
  */
-async function processThumbnails(): Promise<void> {
-  // Check auto-hide setting
-  const autoHideEnabled = await getAutoHideEnabled();
+async function processThumbnails(overrideAutoHide?: boolean): Promise<void> {
+  // Check auto-hide setting (use override if provided to avoid race condition with batched writes)
+  const autoHideEnabled = overrideAutoHide !== undefined ? overrideAutoHide : await getAutoHideEnabled();
 
   // CRITICAL: Clean up ALL blur classes, icons, and hidden state to prevent stale state
   // YouTube's SPA may reorder/reuse DOM elements, so we start completely fresh
@@ -507,44 +450,22 @@ async function processThumbnails(): Promise<void> {
     el.classList.remove('slopblock-hidden');
   });
 
-  // Clear processed video IDs so we recheck everything
+  // Clear processed video IDs and scanner cache so we recheck everything
   processedVideoIds.clear();
+  thumbnailScanner.clearCache();
 
-  // Find all thumbnail elements on the page
-  // YouTube's DOM structure includes multiple container types
-  const thumbnailSelectors = [
-    'ytd-thumbnail',                    // Standard thumbnails
-    'ytd-video-renderer',               // Video list items
-    'ytd-grid-video-renderer',          // Grid layout
-    'ytd-compact-video-renderer',       // Sidebar recommendations
-    'ytd-rich-item-renderer',           // Home feed items
-    'ytd-playlist-video-renderer',      // Playlist videos
-    'ytd-movie-renderer',               // Movie results
-    'ytd-reel-item-renderer',           // Shorts in grid
-    'yt-lockup-view-model',             // New YouTube layout
-    'ytm-compact-video-renderer',       // Mobile web
-    '#contents ytd-video-renderer',     // Specific path for feed
-    '#contents ytd-grid-video-renderer' // Specific path for grid
-  ];
+  // OPTIMIZATION: Use ThumbnailScanner for single-pass DOM query
+  // Old approach: 12 separate querySelectorAll calls + 6 querySelector per thumbnail
+  // New approach: 1 querySelectorAll call + cached extraction
+  const thumbnailMap = thumbnailScanner.scanPage();
 
-  const thumbnails: Element[] = [];
-  for (const selector of thumbnailSelectors) {
-    const elements = document.querySelectorAll(selector);
-    thumbnails.push(...Array.from(elements));
-  }
-
-  // Extract video IDs from thumbnails
+  // Extract video IDs from scan results
   const videoIds: string[] = [];
-  const thumbnailMap = new Map<string, Element>(); // Map video ID to thumbnail element
 
-  for (const thumbnail of thumbnails) {
-    const videoId = extractVideoIdFromThumbnail(thumbnail);
-    if (videoId) {
-      if (!processedVideoIds.has(videoId)) {
-        videoIds.push(videoId);
-        thumbnailMap.set(videoId, thumbnail);
-        processedVideoIds.add(videoId);
-      }
+  for (const [videoId, _thumbnail] of thumbnailMap) {
+    if (!processedVideoIds.has(videoId)) {
+      videoIds.push(videoId);
+      processedVideoIds.add(videoId);
     }
   }
 
@@ -603,67 +524,135 @@ async function checkVideosWithFallback(videoIds: string[]): Promise<Array<{
     payload: { video_ids: videoIds }
   });
 
-  console.log(`[SlopBlock] Checked ${videoIds.length} videos from API, found ${markedVideos.length} marked`);
+  console.log(`[SlopBlock] Checked ${videoIds.length} videos, found ${markedVideos.length} marked`);
   return markedVideos;
 }
 
 /**
- * Debounced thumbnail processing (waits 500ms after last change)
+ * ThumbnailObserver - Lifecycle-managed MutationObserver
+ * Prevents memory leaks by properly disconnecting observer on cleanup
  */
-function scheduleProcessThumbnails(): void {
-  if (thumbnailProcessTimer !== null) {
-    clearTimeout(thumbnailProcessTimer);
-  }
+class ThumbnailObserver {
+  private observer: MutationObserver | null = null;
+  private isObserving: boolean = false;
+  private debounceTimer: number | null = null;
+  private readonly DEBOUNCE_MS = 500;
 
-  thumbnailProcessTimer = window.setTimeout(() => {
-    processThumbnails();
-    thumbnailProcessTimer = null;
-  }, 500);
-}
+  /**
+   * Start observing for thumbnail changes
+   */
+  start(): void {
+    if (this.isObserving) {
+      console.warn('[SlopBlock] ThumbnailObserver already running');
+      return;
+    }
 
-/**
- * Observe the page for new thumbnails and add icons as needed
- */
-function observeThumbnails(): void {
-  // Set up MutationObserver to catch any dynamically loaded content
-  const observer = new MutationObserver((mutations) => {
-    // Check if any mutations added thumbnail-related elements
-    let foundNewThumbnails = false;
+    console.log('[SlopBlock] Starting ThumbnailObserver');
+    this.isObserving = true;
 
-    for (const mutation of mutations) {
-      if (mutation.addedNodes.length > 0) {
-        for (const node of mutation.addedNodes) {
-          if (node instanceof Element) {
-            // Check if the added node is or contains a thumbnail
-            if (
-              node.tagName === 'YTD-THUMBNAIL' ||
-              node.tagName === 'YTD-VIDEO-RENDERER' ||
-              node.tagName === 'YTD-GRID-VIDEO-RENDERER' ||
-              node.tagName === 'YTD-RICH-ITEM-RENDERER' ||
-              node.querySelector('ytd-thumbnail')
-            ) {
-              foundNewThumbnails = true;
-              break;
+    // Create observer with debounced processing
+    this.observer = new MutationObserver((mutations) => {
+      // Check if any mutations added thumbnail-related elements
+      let foundNewThumbnails = false;
+
+      for (const mutation of mutations) {
+        if (mutation.addedNodes.length > 0) {
+          for (const node of mutation.addedNodes) {
+            if (node instanceof Element) {
+              // Check if the added node is or contains a thumbnail
+              if (
+                node.tagName === 'YTD-THUMBNAIL' ||
+                node.tagName === 'YTD-VIDEO-RENDERER' ||
+                node.tagName === 'YTD-GRID-VIDEO-RENDERER' ||
+                node.tagName === 'YTD-RICH-ITEM-RENDERER' ||
+                node.querySelector('ytd-thumbnail')
+              ) {
+                foundNewThumbnails = true;
+                break;
+              }
             }
           }
         }
+        if (foundNewThumbnails) break;
       }
-      if (foundNewThumbnails) break;
+
+      if (foundNewThumbnails) {
+        this.scheduleProcessing();
+      }
+    });
+
+    // Observe the entire page for changes
+    this.observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+
+    // Process any existing thumbnails on start
+    this.scheduleProcessing();
+  }
+
+  /**
+   * Schedule debounced thumbnail processing
+   */
+  private scheduleProcessing(): void {
+    if (this.debounceTimer !== null) {
+      clearTimeout(this.debounceTimer);
     }
 
-    if (foundNewThumbnails) {
-      scheduleProcessThumbnails();
+    this.debounceTimer = window.setTimeout(() => {
+      processThumbnails();
+      this.debounceTimer = null;
+    }, this.DEBOUNCE_MS);
+  }
+
+  /**
+   * Stop observing and clean up resources
+   */
+  stop(): void {
+    if (!this.isObserving) {
+      return;
     }
-  });
 
-  // Observe the entire page for changes
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
+    console.log('[SlopBlock] Stopping ThumbnailObserver');
+    this.isObserving = false;
 
-  // Process any existing thumbnails
-  processThumbnails();
+    // Disconnect observer
+    if (this.observer) {
+      this.observer.disconnect();
+      this.observer = null;
+    }
+
+    // Clear debounce timer
+    if (this.debounceTimer !== null) {
+      clearTimeout(this.debounceTimer);
+      this.debounceTimer = null;
+    }
+  }
+
+  /**
+   * Check if observer is currently active
+   */
+  isActive(): boolean {
+    return this.isObserving;
+  }
+}
+
+// Global instance of ThumbnailObserver
+let thumbnailObserver: ThumbnailObserver | null = null;
+
+/**
+ * Observe the page for new thumbnails and add icons as needed
+ * DEPRECATED: Use ThumbnailObserver class instead
+ * Kept for backward compatibility during migration
+ */
+function observeThumbnails(): void {
+  if (!thumbnailObserver) {
+    thumbnailObserver = new ThumbnailObserver();
+  }
+
+  if (!thumbnailObserver.isActive()) {
+    thumbnailObserver.start();
+  }
 }
 
 /**
@@ -708,81 +697,29 @@ let hasRemovedReport: boolean = false;
 let isInjectingPlayerButton: boolean = false;
 
 /**
- * Update report button state
+ * Update report button state using Strategy pattern
  * @param button - Button element to update
  * @param reported - Whether video is reported
  * @param removed - Whether report was removed (prevents re-reporting)
  */
 function updateButtonState(button: HTMLButtonElement, reported: boolean, removed: boolean = false): void {
+  // Update global state trackers
   isReported = reported;
   hasRemovedReport = removed;
 
-  // Check if this is a Shorts button (contains the compact text)
-  const isShortsButton = button.classList.contains('slopblock-shorts-button');
-  // Check if this is a player button (in video controls)
-  const isPlayerButton = button.classList.contains('slopblock-player-button');
-
+  // Determine button state
+  let state: ButtonState;
   if (removed) {
-    // Report was removed - disable permanently to prevent spam
-    if (isShortsButton) {
-      button.innerHTML = '<div style="font-size: 10px; line-height: 1.2;">✓<br>Removed</div>';
-    } else if (isPlayerButton) {
-      button.innerHTML = `
-        <svg width="100%" height="100%" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="18" cy="18" r="15" stroke="currentColor" stroke-width="3"/>
-          <line x1="10.5" y1="10.5" x2="25.5" y2="25.5" stroke="currentColor" stroke-width="3"/>
-        </svg>
-      `;
-      button.title = 'Report removed';
-    } else {
-      button.textContent = 'Report Removed';
-    }
-    button.classList.remove('reported');
-    button.classList.add('removed');
-    button.disabled = true;
-    button.title = 'You have removed your report for this video';
+    state = ButtonState.REMOVED;
   } else if (reported) {
-    if (isShortsButton) {
-      button.innerHTML = '<div style="font-size: 10px; line-height: 1.2;">✓<br>Reported</div>';
-    } else if (isPlayerButton) {
-      button.innerHTML = `
-        <svg width="100%" height="100%" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M30 9L13.5 25.5l-7.5-7.5" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      `;
-      button.title = 'Reported as AI Slop - Click to undo';
-    } else {
-      button.textContent = '✓ Slop Reported';
-    }
-    button.classList.add('reported');
-    button.title = 'Click to undo report';
+    state = ButtonState.REPORTED;
   } else {
-    if (isShortsButton) {
-      button.innerHTML = '<div style="font-size: 10px; line-height: 1.2;">AI<br>Slop?</div>';
-    } else if (isPlayerButton) {
-      button.innerHTML = `
-        <svg width="100%" height="100%" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="glossGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style="stop-color:#ff5252;stop-opacity:0.95" />
-              <stop offset="40%" style="stop-color:#d32f2f;stop-opacity:0.75" />
-              <stop offset="100%" style="stop-color:#8b1a1a;stop-opacity:0.7" />
-            </linearGradient>
-          </defs>
-          <path d="M18 3L3 30h30L18 3z" fill="url(#glossGradient)"/>
-          <path d="M18 3L10 18L26 18Z" fill="white" opacity="0.3"/>
-          <path d="M18 6L13 16L23 16Z" fill="white" opacity="0.2"/>
-          <text x="18" y="25.5" fill="#000" font-size="12" font-weight="bold" text-anchor="middle" font-family="Arial, sans-serif" opacity="0.6">AI</text>
-          <text x="17.5" y="25" fill="white" font-size="12" font-weight="bold" text-anchor="middle" font-family="Arial, sans-serif" letter-spacing="0.5">AI</text>
-        </svg>
-      `;
-      button.title = 'Report as AI Slop';
-    } else {
-      button.textContent = '⚠ Report as AI Slop';
-    }
-    button.classList.remove('reported');
-    button.title = 'Mark this video as AI-generated content';
+    state = ButtonState.NOT_REPORTED;
   }
+
+  // Get appropriate renderer and apply state
+  const renderer = ButtonRendererFactory.create(button);
+  renderer.render(button, state);
 }
 
 /**
@@ -801,9 +738,9 @@ async function handleReportClick(videoId: string, button: HTMLButtonElement): Pr
     button.style.opacity = '0.6';
 
     if (isReported) {
-      // Remove report (undo) - this will be permanent
+      // Remove report (undo) - check queue first, then database if already uploaded
       await sendMessage({
-        type: MessageType.REMOVE_REPORT,
+        type: MessageType.REMOVE_QUEUED_REPORT,
         payload: { video_id: videoId }
       });
 
@@ -827,24 +764,18 @@ async function handleReportClick(videoId: string, button: HTMLButtonElement): Pr
       updateButtonState(button, true, false);
       showToast('Video reported as AI slop');
 
-      // Queue report for batch upload
-      if (queueManager) {
-        try {
-          const extensionId = await getExtensionId();
-          await queueManager.queueReport(videoId, channelId, extensionId);
-          console.log(`[SlopBlock] Report queued for video ${videoId}`);
-        } catch (error) {
-          console.error('[SlopBlock] Failed to queue report:', error);
-          // Don't revert UI - report is still in local storage
-          // Will retry on next batch or manual flush
-        }
-      } else {
-        // Fallback to direct API call if queue manager not ready
-        console.warn('[SlopBlock] Queue manager not initialized, using direct API');
+      // Send message to background worker to queue report
+      // Background worker handles extension ID and queue management
+      try {
         await sendMessage({
-          type: MessageType.REPORT_VIDEO,
+          type: MessageType.QUEUE_REPORT,
           payload: { video_id: videoId, channel_id: channelId }
         });
+        console.log(`[SlopBlock] Report queued for video ${videoId}`);
+      } catch (error) {
+        console.error('[SlopBlock] Failed to queue report:', error);
+        // Don't revert UI - report is still in local storage
+        // Will retry on next batch or manual flush
       }
     }
   } catch (error: any) {
@@ -870,8 +801,11 @@ async function setupReportButton(videoId: string, button: HTMLButtonElement): Pr
   // Store reference
   currentButton = button;
 
-  // Add click handler
-  button.addEventListener('click', () => handleReportClick(videoId, button));
+  // Add click handler (wrapped with error boundary)
+  button.addEventListener('click', withErrorBoundary(
+    async () => handleReportClick(videoId, button),
+    'button:reportClick'
+  ));
 
   // Check button state from local storage only (no database call needed)
   try {
@@ -989,10 +923,11 @@ function injectPlayerButton(videoId: string, controlBar: HTMLElement): void {
   // Insert at beginning of right controls (leftmost position)
   controlBar.insertBefore(button, controlBar.firstChild);
 
-  // Setup button state and handlers
-  setupReportButton(videoId, button).catch(error => {
-    console.error('[SlopBlock] Error setting up button:', error);
-  });
+  // Setup button state and handlers (wrapped with error boundary)
+  withErrorBoundary(
+    async () => setupReportButton(videoId, button),
+    'button:setupReportButton'
+  )();
 }
 
 
@@ -1154,9 +1089,11 @@ function init(): void {
   if (isWatchPage()) {
     addReportButtonToWatchPage();
   } else if (isShortsPage()) {
-    addReportButtonToShorts().catch(error => {
-      console.error('[SlopBlock] Error during initialization on Shorts page:', error);
-    });
+    // Wrap async initialization with error boundary
+    withErrorBoundary(
+      async () => addReportButtonToShorts(),
+      'init:addReportButtonToShorts'
+    )();
   }
 
   // Start observing thumbnails on all pages
@@ -1195,9 +1132,11 @@ function handleYouTubeNavigation(): void {
     if (isWatchPage()) {
       addReportButtonToWatchPage();
     } else if (isShortsPage()) {
-      addReportButtonToShorts().catch(error => {
-        console.error('[SlopBlock] Error adding report button to Shorts:', error);
-      });
+      // Wrap async navigation handler with error boundary
+      withErrorBoundary(
+        async () => addReportButtonToShorts(),
+        'navigation:addReportButtonToShorts'
+      )();
     }
   }, 0);
 }
@@ -1228,13 +1167,47 @@ function setupNavigationListeners(): void {
 }
 
 /**
+ * Setup cleanup listeners for observer lifecycle
+ * Prevents memory leaks on page unload and SPA navigation
+ */
+function setupCleanupListeners(): void {
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', () => {
+    if (thumbnailObserver) {
+      thumbnailObserver.stop();
+    }
+  });
+
+  // Cleanup on SPA navigation start (before new page loads)
+  document.addEventListener('yt-navigate-start', () => {
+    if (thumbnailObserver) {
+      thumbnailObserver.stop();
+    }
+  });
+
+  // Restart observer on navigation finish (after new page loads)
+  document.addEventListener('yt-navigate-finish', () => {
+    if (thumbnailObserver && !thumbnailObserver.isActive()) {
+      thumbnailObserver.start();
+    }
+  });
+}
+
+/**
  * Listen for messages from popup (e.g., auto-hide setting changes)
  */
 chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'AUTO_HIDE_CHANGED') {
     // Reprocess all thumbnails when auto-hide setting changes
-    console.log('[SlopBlock] Auto-hide setting changed, reprocessing thumbnails...');
-    processThumbnails();
+    // Use payload value to avoid race condition with batched storage writes
+    const enabled = message.payload?.enabled ?? false;
+    console.log(`[SlopBlock] Auto-hide setting changed to ${enabled}, reprocessing thumbnails...`);
+
+    // Wrap async thumbnail processing with error boundary
+    withErrorBoundary(
+      async () => processThumbnails(enabled),
+      'message:processThumbnails'
+    )();
   }
 });
 
@@ -1245,8 +1218,10 @@ if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     init();
     setupNavigationListeners();
+    setupCleanupListeners();
   });
 } else {
   init();
   setupNavigationListeners();
+  setupCleanupListeners();
 }

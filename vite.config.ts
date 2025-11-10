@@ -13,6 +13,9 @@ export default defineConfig({
         popup: 'src/popup/popup.html',
       },
     },
+    // CRITICAL: Disable module preload for service worker compatibility
+    // Module preload polyfill injects window.dispatchEvent which breaks service workers
+    modulePreload: false,
   },
   // Ensure environment variables are available
   define: {

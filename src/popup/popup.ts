@@ -3,68 +3,26 @@
  * Handles settings, statistics display, and user interactions
  */
 
-import { getAutoHideEnabled, setAutoHideEnabled } from '../lib/storage';
-import { MessageType, type UserStatsResponse, type MessageResponse, type ExtensionTrust, type CommunityStats } from '../types';
-import { getCacheMetadata, getCachedVideoCount, clearCache } from '../lib/indexeddb';
-import { USE_CDN_CACHE } from '../lib/constants';
+import { MessageType, type UserStatsResponse, type MessageResponse, type ExtensionTrust, type CommunityStats, type CacheMetadata } from '../types';
+import { VERSION, USE_CDN_CACHE } from '../lib/constants';
 
 /**
- * Persistent connection to background worker
- * Inspired by SponsorBlock's real-time popup updates
+ * REMOVED: Persistent port connection (broadcast system)
+ * Popup now queries queue + Supabase directly on open for accurate stats
  */
-let backgroundPort: chrome.runtime.Port | null = null;
 
 /**
- * Connect to background worker via persistent port
- */
-function connectToBackground(): void {
-  backgroundPort = chrome.runtime.connect({ name: 'popup-connection' });
-
-  backgroundPort.onMessage.addListener((message) => {
-    // Handle real-time updates from background worker
-    if (message.type === 'VIDEO_MARKED') {
-      // New video was marked - update statistics
-      loadStatistics(
-        document.getElementById('totalVideos')!,
-        document.getElementById('userReports')!,
-        document.getElementById('statsNote')!
-      );
-      loadCacheStatus();
-    } else if (message.type === 'CACHE_UPDATED') {
-      // Cache was updated - refresh cache status
-      loadCacheStatus();
-    }
-  });
-
-  backgroundPort.onDisconnect.addListener(() => {
-    console.log('[SlopBlock] Background connection lost');
-    backgroundPort = null;
-  });
-}
-
-/**
- * Send message via persistent port (with fallback to chrome.runtime.sendMessage)
+ * Send message to background worker
  */
 async function sendBackgroundMessage<T>(message: any): Promise<MessageResponse<T>> {
   return new Promise((resolve, reject) => {
-    if (backgroundPort) {
-      // Use persistent connection
-      const listener = (response: MessageResponse<T>) => {
-        backgroundPort!.onMessage.removeListener(listener);
+    chrome.runtime.sendMessage(message, (response) => {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError);
+      } else {
         resolve(response);
-      };
-      backgroundPort.onMessage.addListener(listener);
-      backgroundPort.postMessage(message);
-    } else {
-      // Fallback to traditional message passing
-      chrome.runtime.sendMessage(message, (response) => {
-        if (chrome.runtime.lastError) {
-          reject(chrome.runtime.lastError);
-        } else {
-          resolve(response);
-        }
-      });
-    }
+      }
+    });
   });
 }
 
@@ -72,9 +30,6 @@ async function sendBackgroundMessage<T>(message: any): Promise<MessageResponse<T
  * Initialize the popup UI
  */
 async function init(): Promise<void> {
-  // Connect to background worker for real-time updates
-  connectToBackground();
-
   // Get DOM elements
   const autoHideToggle = document.getElementById('autoHideToggle') as HTMLInputElement;
   const totalVideosElement = document.getElementById('totalVideos');
@@ -88,8 +43,11 @@ async function init(): Promise<void> {
 
   // Load and set current auto-hide setting
   try {
-    const autoHideEnabled = await getAutoHideEnabled();
-    autoHideToggle.checked = autoHideEnabled;
+    const response = await sendBackgroundMessage<boolean>({
+      type: MessageType.GET_AUTO_HIDE_SETTING,
+      payload: {},
+    });
+    autoHideToggle.checked = response.data ?? false;
   } catch (error) {
     console.error('Error loading auto-hide setting:', error);
   }
@@ -99,7 +57,10 @@ async function init(): Promise<void> {
     const enabled = (event.target as HTMLInputElement).checked;
 
     try {
-      await setAutoHideEnabled(enabled);
+      await sendBackgroundMessage({
+        type: MessageType.SET_AUTO_HIDE_SETTING,
+        payload: { enabled },
+      });
 
       // Show feedback to user
       showToast(enabled ? 'Auto-hide enabled' : 'Auto-hide disabled');
@@ -134,6 +95,14 @@ async function init(): Promise<void> {
       cacheSection.style.display = 'none';
     }
   }
+  // Set version in footer
+  const versionElement = document.getElementById('extensionVersion');
+  if (versionElement) {
+    versionElement.textContent = VERSION;
+  }
+
+
+  // Setup debug interval selector (testing only)
 
   // Setup link handlers
   setupLinks();
@@ -148,24 +117,37 @@ async function loadStatistics(
   statsNoteElement: HTMLElement
 ): Promise<void> {
   try {
-    // Fetch user statistics from background service worker
-    const response: MessageResponse<UserStatsResponse> = await sendBackgroundMessage({
+    // 1. Get queue size (pending reports)
+    const queueResponse = await sendBackgroundMessage<{ queueSize: number }>({
+      type: MessageType.GET_QUEUE_SIZE,
+      payload: {},
+    });
+    const pending = queueResponse.data?.queueSize || 0;
+
+    // 2. Get committed reports from Supabase
+    const statsResponse: MessageResponse<UserStatsResponse> = await sendBackgroundMessage({
       type: MessageType.GET_USER_STATS,
       payload: {},
     });
 
-    if (response.success && response.data) {
-      totalVideosElement.textContent = response.data.total_marked_videos.toString();
-      userReportsElement.textContent = response.data.user_reports.toString();
+    if (statsResponse.success && statsResponse.data) {
+      const committed = statsResponse.data.user_reports;
+      const total = pending + committed;
 
-      // Update note based on activity
-      if (response.data.user_reports === 0) {
+      // Display total and global marked videos
+      totalVideosElement.textContent = statsResponse.data.total_marked_videos.toString();
+      userReportsElement.textContent = total.toString();
+
+      // Update note based on queue status
+      if (pending > 0) {
+        statsNoteElement.textContent = `Uploading ${pending} report${pending !== 1 ? 's' : ''}...`;
+      } else if (total === 0) {
         statsNoteElement.textContent = 'Report videos to help the community identify AI content.';
       } else {
-        statsNoteElement.textContent = `Thank you for contributing to the community!`;
+        statsNoteElement.textContent = 'Thank you for contributing to the community!';
       }
     } else {
-      throw new Error(response.error || 'Failed to fetch statistics');
+      throw new Error(statsResponse.error || 'Failed to fetch statistics');
     }
   } catch (error) {
     console.error('Error loading statistics:', error);
@@ -409,9 +391,19 @@ async function loadCacheStatus(): Promise<void> {
   }
 
   try {
-    // Get cache metadata
-    const metadata = await getCacheMetadata();
-    const videoCount = await getCachedVideoCount();
+    // Get cache metadata from service worker
+    const metadataResponse = await sendBackgroundMessage<CacheMetadata>({
+      type: MessageType.GET_CACHE_METADATA,
+      payload: {},
+    });
+    const metadata = metadataResponse.data;
+
+    // Get video count from service worker
+    const countResponse = await sendBackgroundMessage<number>({
+      type: MessageType.GET_CACHED_VIDEO_COUNT,
+      payload: {},
+    });
+    const videoCount = countResponse.data ?? 0;
 
     if (metadata) {
       // Format last sync timestamp
@@ -509,8 +501,11 @@ function setupCacheClearButton(): void {
       button.disabled = true;
       button.textContent = 'Clearing...';
 
-      // Clear IndexedDB cache
-      await clearCache();
+      // Clear cache via service worker
+      await sendBackgroundMessage({
+        type: MessageType.CLEAR_CACHE,
+        payload: {},
+      });
 
       showToast('Cache cleared successfully!');
 
@@ -610,6 +605,7 @@ function setupLinks(): void {
     });
   }
 }
+
 
 /**
  * Start the popup when DOM is ready

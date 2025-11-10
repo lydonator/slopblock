@@ -12,15 +12,15 @@
  * - Optimistic UI updates
  */
 
-import type { QueuedReport, BatchReportResult } from '../types';
-import { MessageType } from '../types';
+import type { QueuedReport } from '../types';
+import { getUploadInterval } from './storage';
+import { batchReportVideos } from '../background/api';
 
 // Configuration constants
 const DB_NAME = 'slopblock_queue';
 const DB_VERSION = 1;
 const STORE_NAME = 'report_queue';
 const MAX_BATCH_SIZE = 10; // Upload after 10 reports
-const BATCH_INTERVAL_MS = 5 * 60 * 1000; // Upload every 5 minutes
 const MAX_RETRY_COUNT = 3;
 
 /**
@@ -28,8 +28,7 @@ const MAX_RETRY_COUNT = 3;
  */
 export class ReportQueueManager {
   private db: IDBDatabase | null = null;
-  private uploadTimer: number | null = null;
-  private isOnline: boolean = navigator.onLine;
+  private isOnline: boolean = typeof navigator !== 'undefined' ? navigator.onLine : true;
   private isUploading: boolean = false;
 
   /**
@@ -39,11 +38,8 @@ export class ReportQueueManager {
     // Setup IndexedDB
     await this.openDatabase();
 
-    // Setup periodic upload timer
-    this.startUploadTimer();
-
-    // Setup online/offline detection
-    this.setupNetworkListeners();
+    // Setup periodic upload alarm (Chrome Alarms API - survives service worker termination)
+    await this.startUploadAlarm();
 
     // Process any existing queue items
     await this.processQueue();
@@ -166,6 +162,38 @@ export class ReportQueueManager {
   }
 
   /**
+   * Remove a specific queued report (for undo functionality)
+   * Returns true if report was found and removed from queue, false if not in queue
+   */
+  async removeQueuedReport(videoId: string, extensionId: string): Promise<boolean> {
+    if (!this.db) return false;
+
+    // Find the report in queue
+    const report = await this.getQueuedReport(videoId, extensionId);
+    if (!report) {
+      // Report not in queue (either already uploaded or never queued)
+      return false;
+    }
+
+    // Remove from queue
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.delete(report.id!);
+
+      request.onsuccess = () => {
+        console.log(`Removed queued report for video ${videoId}`);
+        resolve(true);
+      };
+
+      request.onerror = () => {
+        console.error('Failed to remove queued report:', request.error);
+        reject(request.error);
+      };
+    });
+  }
+
+  /**
    * Get current queue size
    */
   async getQueueSize(): Promise<number> {
@@ -272,6 +300,12 @@ export class ReportQueueManager {
       return;
     }
 
+    // Don't process if database not initialized
+    if (!this.db) {
+      console.log('Skipping queue processing (database not initialized)');
+      return;
+    }
+
     this.isUploading = true;
 
     try {
@@ -313,19 +347,12 @@ export class ReportQueueManager {
         extension_id: r.extension_id,
       }));
 
-      console.log(`Uploading batch of ${batchPayload.length} reports`);
+      console.log(`[Queue Manager] Uploading batch of ${batchPayload.length} reports`);
 
-      // Send to background worker
-      const response = await chrome.runtime.sendMessage({
-        type: MessageType.BATCH_REPORT_VIDEOS,
-        payload: { reports: batchPayload },
-      });
+      // Call API directly (we're already in the background worker)
+      const results = await batchReportVideos(batchPayload);
 
-      if (!response.success) {
-        throw new Error(response.error || 'Batch upload failed');
-      }
-
-      const results = response.data as BatchReportResult[];
+      console.log(`[Queue Manager] Batch upload successful`);
 
       // Process results
       const successfulIds: number[] = [];
@@ -388,44 +415,26 @@ export class ReportQueueManager {
   }
 
   /**
-   * Start periodic upload timer
+   * Start periodic upload alarm using Chrome Alarms API
+   * (Survives service worker termination, unlike setInterval)
    */
-  private startUploadTimer(): void {
-    if (this.uploadTimer) {
-      clearInterval(this.uploadTimer);
-    }
+  private async startUploadAlarm(): Promise<void> {
+    // Note: Using static import at top of file to avoid dynamic import() in service worker
+    // Dynamic imports are disallowed in ServiceWorkerGlobalScope by HTML specification
+    const intervalSeconds = await getUploadInterval();
+    const periodInMinutes = Math.max(1, intervalSeconds / 60); // Chrome min: 1 minute
 
-    this.uploadTimer = setInterval(() => {
-      console.log('Upload timer triggered');
-      this.processQueue();
-    }, BATCH_INTERVAL_MS) as unknown as number;
+    chrome.alarms.create('queue-upload', {
+      periodInMinutes,
+    });
 
-    console.log(`Upload timer started (${BATCH_INTERVAL_MS / 1000}s interval)`);
+    console.log(`[SlopBlock Queue] Upload alarm created (${periodInMinutes}-minute interval, ${intervalSeconds}s)`);
   }
 
   /**
-   * Setup online/offline event listeners
+   * REMOVED: Network listeners (window/document not available in service worker)
+   * Online/offline detection now uses navigator.onLine check in processQueue()
    */
-  private setupNetworkListeners(): void {
-    window.addEventListener('online', () => {
-      console.log('Network online - processing queue');
-      this.isOnline = true;
-      this.processQueue();
-    });
-
-    window.addEventListener('offline', () => {
-      console.log('Network offline - pausing queue processing');
-      this.isOnline = false;
-    });
-
-    // Visibility change (tab becomes active)
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden && this.isOnline) {
-        console.log('Tab became visible - processing queue');
-        this.processQueue();
-      }
-    });
-  }
 
   /**
    * Force immediate queue processing (for testing)
@@ -477,10 +486,8 @@ export class ReportQueueManager {
    * Cleanup resources
    */
   destroy(): void {
-    if (this.uploadTimer) {
-      clearInterval(this.uploadTimer);
-      this.uploadTimer = null;
-    }
+    // Clear the alarm
+    chrome.alarms.clear('queue-upload');
 
     if (this.db) {
       this.db.close();

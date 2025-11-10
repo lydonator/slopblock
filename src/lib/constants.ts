@@ -3,6 +3,12 @@
  */
 
 /**
+ * Extension version
+ * Single source of truth for version number across the application
+ */
+export const VERSION = '1.0.0';
+
+/**
  * Threshold for marking a video as AI slop
  * Videos need this many unique reports to show warning
  */
@@ -15,13 +21,14 @@ export const REPORT_THRESHOLD = 3;
 export const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
- * Storage keys used in chrome.storage.local
+ * Storage keys (now stored in IndexedDB, not chrome.storage)
+ * @deprecated These keys are now used in IndexedDB stores, not chrome.storage
  */
 export const STORAGE_KEYS = {
-  EXTENSION_ID: 'slopblock_extension_id',
-  AUTO_HIDE_ENABLED: 'slopblock_auto_hide',
-  VIDEO_CACHE: 'slopblock_video_cache',
-  REMOVED_REPORTS: 'slopblock_removed_reports', // Track videos where user removed their report
+  EXTENSION_ID: 'slopblock_extension_id', // Legacy - for migration only
+  AUTO_HIDE_ENABLED: 'slopblock_auto_hide', // Legacy - for migration only
+  VIDEO_CACHE: 'slopblock_video_cache', // Legacy - for migration only
+  REMOVED_REPORTS: 'slopblock_removed_reports', // Legacy - for migration only
 } as const;
 
 /**

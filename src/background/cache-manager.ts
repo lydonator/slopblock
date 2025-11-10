@@ -31,39 +31,37 @@ export async function initializeCache(): Promise<void> {
 }
 
 /**
- * Schedule delta updates and pruning
- * - Delta updates every 2 hours
- * - Pruning every 30 minutes
+ * Schedule periodic cache updates using Chrome Alarms API
+ * Three-tier refresh strategy:
+ * 1. Full blob refresh (24 hours): Downloads entire 48h marked videos blob from CDN
+ * 2. Delta sync (30 minutes): Incremental updates for new/changed videos
+ * 3. Cache pruning (30 minutes): Removes entries older than 48h window
+ *
+ * Alarms survive service worker termination (unlike setInterval)
  */
 function schedulePeriodicUpdates(): void {
-  // Delta updates every 2 hours
-  setInterval(async () => {
-    try {
-      const metadata = await getCacheMetadata();
-      if (metadata) {
-        console.log('[SlopBlock Cache] Running delta sync...');
-        await syncDelta(DELTA_FUNCTION_URL, metadata.last_sync_timestamp);
-      } else {
-        console.warn('[SlopBlock Cache] No metadata found, skipping delta sync');
-      }
-    } catch (error) {
-      console.error('[SlopBlock Cache] Delta sync failed:', error);
-    }
-  }, DELTA_UPDATE_INTERVAL_MS);
+  // Full blob refresh alarm (daily)
+  const fullRefreshPeriodMinutes = 24 * 60; // 1440 minutes = 24 hours
+  chrome.alarms.create('cache-full-refresh', {
+    periodInMinutes: fullRefreshPeriodMinutes,
+  });
 
-  // Prune old entries every 30 minutes
-  setInterval(async () => {
-    try {
-      console.log('[SlopBlock Cache] Pruning old entries...');
-      await pruneOldVideos(CACHE_WINDOW_HOURS);
-    } catch (error) {
-      console.error('[SlopBlock Cache] Cache pruning failed:', error);
-    }
-  }, CACHE_PRUNE_INTERVAL_MS);
+  // Delta updates alarm (incremental)
+  const deltaPeriodMinutes = Math.max(1, DELTA_UPDATE_INTERVAL_MS / 1000 / 60);
+  chrome.alarms.create('cache-delta-sync', {
+    periodInMinutes: deltaPeriodMinutes,
+  });
 
-  console.log('[SlopBlock Cache] Periodic updates scheduled');
-  console.log(`- Delta updates: every ${DELTA_UPDATE_INTERVAL_MS / 1000 / 60} minutes`);
-  console.log(`- Cache pruning: every ${CACHE_PRUNE_INTERVAL_MS / 1000 / 60} minutes`);
+  // Cache pruning alarm
+  const prunePeriodMinutes = Math.max(1, CACHE_PRUNE_INTERVAL_MS / 1000 / 60);
+  chrome.alarms.create('cache-pruning', {
+    periodInMinutes: prunePeriodMinutes,
+  });
+
+  console.log('[SlopBlock Cache] Periodic updates scheduled (three-tier strategy):');
+  console.log(`- Full blob refresh: every ${fullRefreshPeriodMinutes} minutes (24 hours)`);
+  console.log(`- Delta updates: every ${deltaPeriodMinutes} minutes`);
+  console.log(`- Cache pruning: every ${prunePeriodMinutes} minutes`);
 }
 
 /**
@@ -113,5 +111,39 @@ export async function performPruning(): Promise<void> {
   } catch (error) {
     console.error('[SlopBlock Cache] Pruning failed:', error);
     throw error;
+  }
+}
+
+/**
+ * Handle cache-related alarms
+ * Called by service worker when alarms fire
+ */
+export async function handleCacheAlarm(alarmName: string): Promise<void> {
+  if (alarmName === 'cache-full-refresh') {
+    try {
+      console.log('[SlopBlock Cache] Running daily full blob refresh...');
+      await syncFullBlob(FULL_BLOB_URL);
+    } catch (error) {
+      console.error('[SlopBlock Cache] Full blob refresh failed:', error);
+    }
+  } else if (alarmName === 'cache-delta-sync') {
+    try {
+      const metadata = await getCacheMetadata();
+      if (metadata) {
+        console.log('[SlopBlock Cache] Running delta sync...');
+        await syncDelta(DELTA_FUNCTION_URL, metadata.last_sync_timestamp);
+      } else {
+        console.warn('[SlopBlock Cache] No metadata found, skipping delta sync');
+      }
+    } catch (error) {
+      console.error('[SlopBlock Cache] Delta sync failed:', error);
+    }
+  } else if (alarmName === 'cache-pruning') {
+    try {
+      console.log('[SlopBlock Cache] Pruning old entries...');
+      await pruneOldVideos(CACHE_WINDOW_HOURS);
+    } catch (error) {
+      console.error('[SlopBlock Cache] Cache pruning failed:', error);
+    }
   }
 }

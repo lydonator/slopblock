@@ -167,10 +167,23 @@ export async function getUserStats(): Promise<UserStatsResponse> {
 
     if (error) {
       console.error('Error fetching user stats:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      console.error('Extension ID used:', extensionId);
       throw error;
     }
 
-    return data as UserStatsResponse;
+    // Handle array response (function returns TABLE)
+    // TODO: Migrate to RETURNS json in SQL for cleaner response
+    if (Array.isArray(data) && data.length > 0) {
+      return data[0] as UserStatsResponse;
+    }
+
+    // Fallback for empty result
+    return {
+      extension_id: extensionId,
+      user_reports: 0,
+      total_marked_videos: 0,
+    };
   } catch (error) {
     console.error('Failed to fetch user stats:', error);
     throw error;
@@ -368,12 +381,16 @@ export async function getCommunityStats(): Promise<CommunityStats | null> {
       .from('community_stats')
       .select('*')
       .eq('id', 1)
-      .single();
+      .maybeSingle(); // Changed from .single() to .maybeSingle() - returns null if no rows
 
     if (error) {
       console.error('Error fetching community stats:', error);
+      throw error;
+    }
 
-      // Return default values if community_stats not initialized
+    // If table is empty (fresh database), return default values
+    if (!data) {
+      console.log('[SlopBlock] Community stats table empty, returning defaults');
       return {
         id: 1,
         total_users: 0,

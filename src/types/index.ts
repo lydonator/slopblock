@@ -83,6 +83,16 @@ export interface CommunityStats {
 }
 
 /**
+ * Cache metadata (Phase 4 - CDN cache system)
+ */
+export interface CacheMetadata {
+  key: string;
+  last_sync_timestamp: string;
+  last_prune_timestamp: string;
+  blob_version: string;
+}
+
+/**
  * Queued report for IndexedDB (Phase 3)
  */
 export interface QueuedReport {
@@ -219,11 +229,21 @@ export enum MessageType {
   CHECK_VIDEOS_WEIGHTED = 'CHECK_VIDEOS_WEIGHTED',
   CHECK_USER_REPORT_WEIGHTED = 'CHECK_USER_REPORT_WEIGHTED',
   GET_TRUST_SCORE = 'GET_TRUST_SCORE',
+  QUEUE_REPORT = 'QUEUE_REPORT', // Queue a single report (background worker handles it)
+  REMOVE_QUEUED_REPORT = 'REMOVE_QUEUED_REPORT', // Remove a report from queue (or from DB if already uploaded)
+  GET_QUEUE_SIZE = 'GET_QUEUE_SIZE', // Get current queue size for stats display
+  SET_UPLOAD_INTERVAL = 'SET_UPLOAD_INTERVAL', // Update upload interval (testing only)
   // Phase 3 cold-start additions
   GET_COMMUNITY_STATS = 'GET_COMMUNITY_STATS',
   // Phase 4 CDN cache additions
   REFRESH_CACHE = 'REFRESH_CACHE',
   DELTA_SYNC = 'DELTA_SYNC',
+  GET_CACHE_METADATA = 'GET_CACHE_METADATA',
+  GET_CACHED_VIDEO_COUNT = 'GET_CACHED_VIDEO_COUNT',
+  CLEAR_CACHE = 'CLEAR_CACHE',
+  // Settings management (IndexedDB via service worker)
+  GET_AUTO_HIDE_SETTING = 'GET_AUTO_HIDE_SETTING',
+  SET_AUTO_HIDE_SETTING = 'SET_AUTO_HIDE_SETTING',
 }
 
 /**
@@ -293,6 +313,13 @@ export interface CheckVideosWeightedPayload {
  */
 export interface GetTrustScorePayload {
   extension_id: string;
+}
+
+/**
+ * Payload for SET_AUTO_HIDE_SETTING message (Phase 4)
+ */
+export interface SetAutoHideSettingPayload {
+  enabled: boolean;
 }
 
 /**

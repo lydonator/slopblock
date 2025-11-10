@@ -52,6 +52,9 @@ coverage/
 
 # Admin Dashboard (internal tooling)
 admin-dashboard/
+# Archived test artifacts
+review/
+CLAUDE.md
 
 # Temporary files from troubleshooting
 temp_youtube.html

@@ -3,19 +3,32 @@
  * Handles extension lifecycle, API communication, and message routing
  */
 
+// CRITICAL: Polyfill for Vite's module preload code
+// Service workers don't have 'window', so we alias it to 'self'
+// This prevents "window is not defined" errors from bundled code
+if (typeof window === 'undefined') {
+  // @ts-ignore - Polyfill for service worker context
+  globalThis.window = self;
+}
+
 import { testConnection } from '../lib/supabase';
-import { getExtensionId, runMigrations } from '../lib/storage';
+import { getExtensionId, runMigrations, getAutoHideEnabled, setAutoHideEnabled } from '../lib/storage';
 import * as api from './api';
 import { MessageType, type ExtensionMessage, type MessageResponse } from '../types';
-import { initializeCache, refreshCache, performDeltaSync } from './cache-manager';
+import { initializeCache, refreshCache, performDeltaSync, handleCacheAlarm } from './cache-manager';
 import { USE_CDN_CACHE } from '../lib/constants';
-import { getDB } from '../lib/indexeddb';
+import { getDB, runStorageMigration, getCacheMetadata, getCachedVideoCount, clearCache } from '../lib/indexeddb';
+import { getQueueManager } from '../lib/queue-manager';
 
 /**
  * Initialize the extension on installation/startup
  */
 chrome.runtime.onInstalled.addListener(async (details) => {
-  // Run config migrations first (inspired by SponsorBlock)
+  // CRITICAL: Run chrome.storage → IndexedDB migration FIRST
+  // This must happen before any other storage operations
+  await runStorageMigration();
+
+  // Run config migrations (after storage migration)
   await runMigrations();
 
   // Generate or retrieve extension ID
@@ -34,6 +47,10 @@ chrome.runtime.onInstalled.addListener(async (details) => {
       await initializeCache();
     }
   }
+
+  // Initialize queue manager (runs in background worker context)
+  await getQueueManager();
+  console.log('[SlopBlock] Queue manager initialized in background worker');
 });
 
 /**
@@ -62,53 +79,10 @@ chrome.runtime.onMessage.addListener((
 });
 
 /**
- * Connected popup ports for real-time updates
- * Inspired by SponsorBlock's persistent popup connection
+ * REMOVED: Broadcast system (popup ports and real-time updates)
+ * Popup now queries queue + Supabase on open for accurate stats
+ * Simpler architecture without timing dependencies
  */
-const popupPorts = new Set<chrome.runtime.Port>();
-
-/**
- * Handle popup port connections for real-time updates
- */
-chrome.runtime.onConnect.addListener((port) => {
-  if (port.name === 'popup-connection') {
-    console.log('[SlopBlock] Popup connected');
-    popupPorts.add(port);
-
-    port.onDisconnect.addListener(() => {
-      console.log('[SlopBlock] Popup disconnected');
-      popupPorts.delete(port);
-    });
-
-    port.onMessage.addListener(async (message) => {
-      // Handle bidirectional messages from popup
-      try {
-        const data = await handleMessage(message);
-        port.postMessage({ success: true, data });
-      } catch (error: any) {
-        port.postMessage({
-          success: false,
-          error: error.message || 'Unknown error occurred',
-        });
-      }
-    });
-  }
-});
-
-/**
- * Broadcast a message to all connected popups
- * Use this to send real-time updates (e.g., new videos marked)
- */
-export function broadcastToPopups(message: { type: string; payload: any }): void {
-  popupPorts.forEach((port) => {
-    try {
-      port.postMessage(message);
-    } catch (error) {
-      console.error('[SlopBlock] Error broadcasting to popup:', error);
-      popupPorts.delete(port);
-    }
-  });
-}
 
 /**
  * Route messages to appropriate handlers
@@ -145,6 +119,20 @@ async function handleMessage(message: ExtensionMessage): Promise<any> {
       if (USE_CDN_CACHE) {
         try {
           const db = await getDB();
+
+          // CRITICAL FIX: Check if cache has ANY data before trusting empty results
+          // An empty cache could mean:
+          // 1. Initial install (no sync yet)
+          // 2. Blob sync failed
+          // 3. Blob was empty at last sync (but DB has new data now)
+          const cacheSize = await db.count('marked-videos');
+
+          if (cacheSize === 0) {
+            console.warn('[SlopBlock Service Worker] Cache is empty, falling back to API');
+            return await api.getMarkedVideosWeighted(message.payload.video_ids);
+          }
+
+          // Cache has data - trust it for queries
           const videoIds = message.payload.video_ids;
           const markedVideos: Array<{
             video_id: string;
@@ -164,7 +152,7 @@ async function handleMessage(message: ExtensionMessage): Promise<any> {
             }
           }
 
-          console.log(`[SlopBlock Service Worker] Checked ${videoIds.length} videos from cache, found ${markedVideos.length} marked`);
+          console.log(`[SlopBlock Service Worker] Checked ${videoIds.length} videos from cache (${cacheSize} total cached), found ${markedVideos.length} marked`);
           return markedVideos;
         } catch (error) {
           console.warn('[SlopBlock Service Worker] Cache query failed, falling back to API:', error);
@@ -193,6 +181,74 @@ async function handleMessage(message: ExtensionMessage): Promise<any> {
       await performDeltaSync();
       return { success: true };
 
+    case MessageType.GET_CACHE_METADATA:
+      const metadata = await getCacheMetadata();
+      return metadata;
+
+    case MessageType.GET_CACHED_VIDEO_COUNT:
+      const count = await getCachedVideoCount();
+      return count;
+
+    case MessageType.CLEAR_CACHE:
+      await clearCache();
+      return { success: true };
+
+    case MessageType.GET_AUTO_HIDE_SETTING:
+      const autoHideEnabled = await getAutoHideEnabled();
+      return autoHideEnabled;
+
+    case MessageType.SET_AUTO_HIDE_SETTING:
+      await setAutoHideEnabled(message.payload.enabled);
+      return { success: true };
+
+    // Queue a report (Phase 3 - runs in background worker context)
+    case MessageType.QUEUE_REPORT:
+      const queueManager = await getQueueManager();
+      const extensionId = await getExtensionId();
+      await queueManager.queueReport(
+        message.payload.video_id,
+        message.payload.channel_id,
+        extensionId
+      );
+      return { success: true };
+
+    // Remove a queued report (Phase 3 - undo functionality)
+    case MessageType.REMOVE_QUEUED_REPORT:
+      const queueMgrRemove = await getQueueManager();
+      const extensionIdRemove = await getExtensionId();
+      const wasInQueue = await queueMgrRemove.removeQueuedReport(
+        message.payload.video_id,
+        extensionIdRemove
+      );
+
+      // If report was not in queue, it must have been uploaded already
+      // In that case, call the API to remove it from the database
+      if (!wasInQueue) {
+        console.log(`Report for ${message.payload.video_id} not in queue, removing from database`);
+        return await api.removeReport(message.payload.video_id);
+      }
+
+      console.log(`Report for ${message.payload.video_id} removed from queue`);
+      return { success: true };
+
+    // Get queue size for statistics display
+    case MessageType.GET_QUEUE_SIZE:
+      const queueMgr = await getQueueManager();
+      const queueSize = await queueMgr.getQueueSize();
+      return { queueSize };
+
+    // Set upload interval (testing only - recreates alarm)
+    case MessageType.SET_UPLOAD_INTERVAL:
+      const intervalSeconds = message.payload.seconds;
+      const periodInMinutes = Math.max(1, intervalSeconds / 60);
+
+      chrome.alarms.create('queue-upload', {
+        periodInMinutes,
+      });
+
+      console.log(`[SlopBlock Service Worker] Upload interval updated to ${intervalSeconds}s (${periodInMinutes} minutes)`);
+      return { success: true };
+
     default:
       throw new Error(`Unknown message type: ${message.type}`);
   }
@@ -202,7 +258,10 @@ async function handleMessage(message: ExtensionMessage): Promise<any> {
  * Handle extension startup
  */
 chrome.runtime.onStartup.addListener(async () => {
-  // Run migrations on startup too (in case user upgraded while browser was closed)
+  // Run storage migration first (in case user upgraded while browser was closed)
+  await runStorageMigration();
+
+  // Run migrations on startup too
   await runMigrations();
 
   // Test connection on startup
@@ -210,23 +269,21 @@ chrome.runtime.onStartup.addListener(async () => {
 });
 
 /**
- * Keep service worker alive (if needed)
- * Chrome may terminate inactive service workers after 30 seconds
+ * Handle Chrome Alarms for queue processing and cache management
+ * Alarms survive service worker termination (unlike setInterval)
  */
-let keepAliveInterval: number | undefined;
-
-function keepAlive() {
-  if (keepAliveInterval) {
-    clearInterval(keepAliveInterval);
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name === 'queue-upload') {
+    console.log('[SlopBlock Service Worker] Alarm triggered: processing queue');
+    const queueManager = await getQueueManager();
+    await queueManager.processQueue();
+  } else if (alarm.name === 'cache-full-refresh' || alarm.name === 'cache-delta-sync' || alarm.name === 'cache-pruning') {
+    console.log(`[SlopBlock Service Worker] Alarm triggered: ${alarm.name}`);
+    await handleCacheAlarm(alarm.name);
   }
+});
 
-  keepAliveInterval = setInterval(() => {
-    // Send a simple message to keep the worker active
-    chrome.runtime.getPlatformInfo(() => {
-      // No-op to prevent worker from being terminated
-    });
-  }, 20000) as unknown as number; // Every 20 seconds
-}
-
-// Initialize keep-alive
-keepAlive();
+/**
+ * REMOVED: Keep-alive mechanism
+ * No longer needed - Chrome Alarms API keeps service worker active when needed
+ */
