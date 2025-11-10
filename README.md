@@ -48,7 +48,6 @@ SlopBlock solves this by:
 - **95%+ API Reduction**: Client-side IndexedDB cache makes video checks instant and local
 - **Trust System**: Hybrid scoring (50% time-based + 50% accuracy-based) prevents new account brigade attacks
 - **Offline Support**: Queue manager with automatic retry and batch uploads
-- **SponsorBlock-Inspired**: Batched storage writes, persistent popup connections, config migrations
 - **Privacy-First**: No personal data collection, anonymous reporting
 - **Manifest V3**: Modern, secure Chrome extension architecture
 - **TypeScript**: Type-safe development with excellent DX
