@@ -1,9 +1,7 @@
 theme: jekyll-theme-cayman
 title: SlopBlock Documentation
 description: Crowdsourced AI content detection for YouTube
-baseurl: "/slopblock"
-url: "https://lydonator.github.io"
+baseurl: ""
+url: "https://slopblock.cc"
 
-# Only include docs folder
-include: ["docs"]
 exclude: ["src", "migrations", "supabase", "node_modules", "dist", "admin-dashboard"]
