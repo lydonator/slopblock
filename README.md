@@ -69,7 +69,7 @@ SlopBlock solves this by:
 **Backend**:
 - Supabase (PostgreSQL + Edge Functions + Storage CDN)
 - Row Level Security (RLS) for secure anonymous access
-- Edge Functions for cache generation (hourly blob + delta)
+- Edge Functions for cache generation (24 hourly blob + delta)
 - Supabase Storage for CDN delivery
 
 **Development**:
@@ -216,8 +216,8 @@ trust_weight = trust_score (0.30-1.00 range)
 ### API Call Reduction
 
 **Phase 2 (Baseline):**
-- Every video check: 1 API call
-- 100 thumbnails = 100 API calls
+- Every video check: 1 API call (legacy)
+- 100 thumbnails = 100 API calls (legacy)
 
 **Phase 3 (Batching):**
 - Reporting: 90% reduction (batch every 10 reports or 10 minutes)
