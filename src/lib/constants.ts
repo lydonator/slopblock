@@ -59,7 +59,7 @@ const SUPABASE_PROJECT_ID = SUPABASE_URL.replace('https://', '').split('.')[0];
 export const CDN_BASE_URL = `https://${SUPABASE_PROJECT_ID}.supabase.co/storage/v1/object/public/cdn-cache`;
 export const FULL_BLOB_URL = `${CDN_BASE_URL}/marked-videos-48h.json`;
 export const METADATA_URL = `${CDN_BASE_URL}/metadata.json`;
-export const DELTA_FUNCTION_URL = `https://${SUPABASE_PROJECT_ID}.supabase.co/functions/v1/generate-delta`;
+export const DELTA_CDN_URL = `${CDN_BASE_URL}/delta-latest.json`; // Delta from CDN storage (not Edge Function)
 
 /**
  * Cache settings for 48-hour sliding window
