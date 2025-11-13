@@ -57,7 +57,7 @@ The trust system prevents coordinated attacks (like botnets or brigading) where 
 
 ### Installation
 
-1. [Install](https://chromewebstore.google.com/detail/slopblock/gaaodejmfnmlodlglkcdnaamomlkdbbc) SlopBlock from the Chrome Web Store - 
+1. [Install](https://chromewebstore.google.com/detail/slopblock/gaaodejmfnmlodlglkcdnaamomlkdbbc) SlopBlock from the Chrome Web Store
 2. Click the extension icon in your Chrome toolbar to open settings
 3. The extension is now active on YouTube
 
