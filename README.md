@@ -311,7 +311,7 @@ This is difficult to pin down until we have a settled idea of what the userbase 
 
 ### Can I export my reports?
 
-Please see the **Your Rights & Control** section in the following doc: https://lydonator.github.io/slopblock/docs/privacy
+Please see the **Your Rights & Control** section in the following doc: https://slopblock.cc/privacy
 
 ### Why IndexedDB instead of chrome.storage?
 
@@ -340,13 +340,13 @@ TBD (will be decided before public release - likely MIT or GPL-3.0)
 
 ## Support & Contact
 
-- **Documentation**: [SlopBlock Help](https://lydonator.github.io/slopblock/docs/help)
+- **Documentation**: [SlopBlock Help](https://slopblock.cc/)
 - **Issues**: [GitHub Issues](https://github.com/lydonator/slopblock/issues)
-- **Privacy**: [Privacy Policy](https://lydonator.github.io/slopblock/docs/privacy)
-- **Feedback**: [Submit Feedback](https://lydonator.github.io/slopblock/docs/feedback)
+- **Privacy**: [Privacy Policy](https://slopblock.cc/privacy)
+- **Feedback**: [Submit Feedback](https://slopblock.cc/feedback)
 
 
 ---
 
-**Current Development Status**: Phase 4 Complete - Production-ready with CDN caching and trust system -- Under review with the Chrome Web Store --
+**Current Development Status**: Phase 4 Complete - Production-ready with CDN caching and trust system --
 
