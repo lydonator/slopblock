@@ -57,7 +57,7 @@ The trust system prevents coordinated attacks (like botnets or brigading) where 
 
 ### Installation
 
-1. Install SlopBlock from the Chrome Web Store (or load unpacked from source)
+1. Install SlopBlock from the Chrome Web Store
 2. Click the extension icon in your Chrome toolbar to open settings
 3. The extension is now active on YouTube
 
@@ -448,9 +448,9 @@ A: Very little - typically under 1MB. The cache is pruned automatically to keep 
 ### Get Support
 
 - **GitHub Issues**: [Report a bug or ask a question](https://github.com/lydonator/slopblock/issues)
-- **Documentation**: [Full project documentation](https://github.com/lydonator/slopblock)
-- **Privacy Policy**: [How we handle data](https://lydonator.github.io/slopblock/privacy)
-- **Submit Feedback**: [Feature requests and suggestions](https://lydonator.github.io/slopblock/feedback)
+- **Documentation**: [Full project documentation](https://slopblock.cc/help)
+- **Privacy Policy**: [How we handle data](https://slopblock.cc/privacy)
+- **Submit Feedback**: [Feature requests and suggestions](https://slopblock.cc/feedback)
 
 ### Provide Feedback
 
