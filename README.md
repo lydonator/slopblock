@@ -4,7 +4,7 @@
 
 SlopBlock helps YouTube users identify and optionally filter AI-generated "slop" content through community-driven reporting with trust-based consensus. Inspired by SponsorBlock's crowdsourced approach, SlopBlock allows users to mark videos as AI-generated and displays visual warnings on thumbnails across YouTube's interface.
 
-Install from the Chrome Web Store: https://chromewebstore.google.com/detail/slopblock/gaaodejmfnmlodlglkcdnaamomlkdbbc
+Install from the Chrome Web Store: [SlopBlock Extension](https://chromewebstore.google.com/detail/slopblock/gaaodejmfnmlodlglkcdnaamomlkdbbc)
 
 Instructions: https://slopblock.cc/help
 
