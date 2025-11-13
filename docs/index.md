@@ -30,7 +30,7 @@ SlopBlock is a Chromium browser extension that enables crowdsourced identificati
 ## Getting Started
 
 1. **Install the Extension**
-   - Download from Chrome Web Store (under review)
+   - Download from Chrome Web Store - [SlopBlock Extension](https://chromewebstore.google.com/detail/slopblock/gaaodejmfnmlodlglkcdnaamomlkdbbc)
 
 2. **Browse YouTube as Normal**
    - Warning icons appear automatically on marked video thumbnails in various feeds
