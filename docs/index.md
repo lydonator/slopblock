@@ -4,11 +4,11 @@ Welcome to SlopBlock - a community-driven browser extension for identifying AI-g
 
 ## Quick Links
 
-📖 **[Help & FAQ](./help)** - Learn how to use SlopBlock, troubleshoot issues, and understand features
+📖 **[Help & FAQ](https://slopblock.cc/help)** - Learn how to use SlopBlock, troubleshoot issues, and understand features
 
-🔒 **[Privacy Policy](./privacy)** - How we handle your data and protect your privacy
+🔒 **[Privacy Policy](https://slopblock.cc/privacy)** - How we handle your data and protect your privacy
 
-💬 **[Feedback & Support](./feedback)** - Report bugs, request features, or get help
+💬 **[Feedback & Support](https://slopblock.cc/feedback)** - Report bugs, request features, or get help
 
 ---
 
@@ -46,9 +46,9 @@ SlopBlock is a Chromium browser extension that enables crowdsourced identificati
 
 ## Documentation
 
-- **[Help & FAQ](./help)** - Complete user guide
-- **[Privacy Policy](./privacy)** - Data handling and security
-- **[Feedback & Support](./feedback)** - Get help or report issues
+- **[Help & FAQ](https://slopblock.cc/help)** - Complete user guide
+- **[Privacy Policy](https://slopblock.cc/privacy)** - Data handling and security
+- **[Feedback & Support](https://slopblock.cc/feedback)** - Get help or report issues
 
 ---
 
