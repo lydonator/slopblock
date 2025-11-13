@@ -37,7 +37,7 @@ SlopBlock solves this by:
 
 ### Core Functionality
 
-- **Trust-Based Marking**: Videos reach threshold when community trust points (weighted by reporter credibility) exceed 2.5
+- **Trust-Based Marking**: Videos reach threshold when community trust points (weighted by reporter credibility) exceed a certain level
 - **Instant Performance**: Lightning-fast checks with local IndexedDB caching, no server wait times
 - **Visual Warning Icons**: Glossy animated icons with blur effects on thumbnails
 - **Offline Reporting**: Reports queue locally and sync automatically when online
