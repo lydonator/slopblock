@@ -6,8 +6,7 @@ SlopBlock helps YouTube users identify and optionally filter AI-generated "slop"
 
 Install from the Chrome Web Store: [SlopBlock Extension](https://chromewebstore.google.com/detail/slopblock/gaaodejmfnmlodlglkcdnaamomlkdbbc)
 
-Instructions: https://slopblock.cc/help
-
+Instructions: https://slopblock.cc/
 ---
 
 ## Current Status
