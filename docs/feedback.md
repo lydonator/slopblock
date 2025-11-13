@@ -89,8 +89,8 @@ If you enjoy SlopBlock, please consider:
 | 🐛 Bug Report | [GitHub Issues](https://github.com/lydonator/slopblock/issues) |
 | 💡 Feature Request | [GitHub Issues](https://github.com/lydonator/slopblock/issues) |
 | 💬 Discussion | [GitHub Discussions](https://github.com/lydonator/slopblock/discussions) |
-| 📖 Documentation | [Help Page](./help) |
-| 🔒 Privacy Policy | [Privacy](./privacy) |
+| 📖 Documentation | [Help Page](https://slopblock.cc/help) |
+| 🔒 Privacy Policy | [Privacy](https://slopblock.cc/privacy) |
 | 📊 Source Code | [GitHub Repository](https://github.com/lydonator/slopblock) |
 
 ---
@@ -216,4 +216,4 @@ A: Absolutely! Regular contributors may be invited to join the maintainer team. 
 
 ---
 
-*Last updated: November 4, 2025*
+*Last updated: November 13th, 2025*
