@@ -399,7 +399,7 @@ To request data access or deletion:
 
 If you have any questions about this privacy policy or how your data is handled, please:
 
-1. Check the [Help & FAQ page](./help)
+1. Check the [Help & FAQ page](https://slopblock.cc/help)
 2. Open a [GitHub Discussion](https://github.com/lydonator/slopblock/discussions)
 3. File an [Issue](https://github.com/lydonator/slopblock/issues)
 
