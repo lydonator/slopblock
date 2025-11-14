@@ -292,6 +292,7 @@ We don't request:
 - ❌ `cookies` - Can't read your cookies
 
 No user data is collected beyond anonymous video reports. _No personal information, browsing history, or YouTube account data is accessed_.
+
 ---
 
 ## Children's Privacy (COPPA Compliance)
