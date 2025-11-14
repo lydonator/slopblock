@@ -269,9 +269,15 @@ We do **not** use:
 
 SlopBlock requests these Chrome permissions:
 
-### `storage`
-**Why:** Store your extension ID and settings locally
-**Access:** Local browser storage only (not cloud sync)
+### `alarms`
+**Why:** Schedule periodic background tasks for batch uploading
+**Access:** Local browser
+
+Why this is necessary:
+- User reports are batched locally for 10 minutes to reduce server load
+- The alarms API schedules these batch uploads in the background
+- Without this permission, reports would be lost when YouTube pages are closed
+- This ensures data persistence and reliable community reporting
 
 ### `host_permissions: *://*.youtube.com/*`
 **Why:** Inject scripts on YouTube pages to show warnings and report button (Youtube Player)
@@ -285,6 +291,7 @@ We don't request:
 - ❌ `webRequest` - Can't intercept network traffic
 - ❌ `cookies` - Can't read your cookies
 
+No user data is collected beyond anonymous video reports. _No personal information, browsing history, or YouTube account data is accessed_.
 ---
 
 ## Children's Privacy (COPPA Compliance)
